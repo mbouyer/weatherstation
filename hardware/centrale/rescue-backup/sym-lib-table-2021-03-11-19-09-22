@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name A20_OLIMEXINO_LIME2_SHIELD)(type Legacy)(uri ${LOCALMOD}/A20_OLIMEXINO_LIME2_SHIELD.lib)(options "")(descr ""))
+)

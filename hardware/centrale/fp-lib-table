@@ -1,0 +1,4 @@
+(fp_lib_table
+  (lib (name rescue-backup)(type KiCad)(uri ${KIPRJMOD}/rescue-backup)(options "")(descr ""))
+  (lib (name A20_OLIMEXINO_LIME2_SHIELD)(type Legacy)(uri ${LOCALMOD}/A20_OLIMEXINO_LIME2_SHIELD.mod)(options "")(descr ""))
+)

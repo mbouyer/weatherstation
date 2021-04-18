@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name capteur-rescue)(type Legacy)(uri ${KIPRJMOD}/capteur-rescue.lib)(options "")(descr ""))
+  (lib (name centrale-rescue)(type Legacy)(uri /home/bouyer/kicad/weather_station/centrale/centrale-rescue.lib)(options "")(descr ""))
+)

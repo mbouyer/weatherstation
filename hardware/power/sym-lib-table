@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name te_fsm4)(type Legacy)(uri ${LOCALMOD}/te_fsm4.lib)(options "")(descr ""))
+)
