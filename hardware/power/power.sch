@@ -215,7 +215,7 @@ F 3 "" H 8300 4300 50  0001 C CNN
 	0    1    1    0   
 $EndComp
 $Comp
-L Device:R_Small R6
+L power-rescue:R_Small-Device R6
 U 1 1 6048396A
 P 3550 4900
 F 0 "R6" V 3354 4900 50  0000 C CNN
@@ -268,7 +268,7 @@ F 4 "694106301002" H 1500 1800 50  0001 C CNN "P/N"
 	1    0    0    -1  
 $EndComp
 $Comp
-L Device:CP_Small C1
+L power-rescue:CP_Small-Device C1
 U 1 1 604A7454
 P 1950 1800
 F 0 "C1" H 2038 1846 50  0000 L CNN
@@ -280,7 +280,7 @@ F 4 "25YXG1000MEFC12.5X20" H 1950 1800 50  0001 C CNN "P/N"
 	1    0    0    -1  
 $EndComp
 $Comp
-L Device:R_Small R4
+L power-rescue:R_Small-Device R4
 U 1 1 604A7CD7
 P 2950 1500
 F 0 "R4" H 3100 1450 50  0000 R CNN
@@ -292,7 +292,7 @@ F 4 " ERJ1TRQFR22U" H 2950 1500 50  0001 C CNN "P/N"
 	-1   0    0    1   
 $EndComp
 $Comp
-L Device:R_Small R5
+L power-rescue:R_Small-Device R5
 U 1 1 604A803A
 P 3250 1250
 F 0 "R5" V 3200 1400 50  0000 C CNN
@@ -395,7 +395,7 @@ F 4 "PMEG3050EP" H 4200 1150 50  0001 C CNN "P/N"
 	-1   0    0    1   
 $EndComp
 $Comp
-L Device:CP_Small C8
+L power-rescue:CP_Small-Device C8
 U 1 1 604DDB56
 P 4650 1550
 F 0 "C8" H 4738 1596 50  0000 L CNN
@@ -414,7 +414,7 @@ Wire Wire Line
 Wire Wire Line
 	4350 1150 4450 1150
 $Comp
-L Device:R_Small R8
+L power-rescue:R_Small-Device R8
 U 1 1 604F7285
 P 4450 1450
 F 0 "R8" H 4600 1400 50  0000 R CNN
@@ -425,7 +425,7 @@ F 3 "~" H 4450 1450 50  0001 C CNN
 	-1   0    0    1   
 $EndComp
 $Comp
-L Device:R_Small R9
+L power-rescue:R_Small-Device R9
 U 1 1 604F76AF
 P 4450 2600
 F 0 "R9" H 4400 2550 50  0000 R CNN
@@ -463,7 +463,7 @@ Wire Wire Line
 Wire Wire Line
 	2850 2400 3350 2400
 $Comp
-L Device:R_Small R1
+L power-rescue:R_Small-Device R1
 U 1 1 6051DA41
 P 2400 2500
 F 0 "R1" H 2550 2450 50  0000 R CNN
@@ -474,7 +474,7 @@ F 3 "~" H 2400 2500 50  0001 C CNN
 	-1   0    0    1   
 $EndComp
 $Comp
-L Device:R_Small R2
+L power-rescue:R_Small-Device R2
 U 1 1 6051E81E
 P 2400 4550
 F 0 "R2" H 2550 4500 50  0000 R CNN
@@ -631,7 +631,7 @@ F 3 "http://www.ti.com/lit/ds/symlink/ina226.pdf" H 7550 2000 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Device:R_Small R11
+L power-rescue:R_Small-Device R11
 U 1 1 605368C3
 P 5250 2400
 F 0 "R11" H 5400 2350 50  0000 R CNN
@@ -647,7 +647,7 @@ Wire Wire Line
 Wire Wire Line
 	5250 2500 5250 2600
 $Comp
-L Device:R_Small R15
+L power-rescue:R_Small-Device R15
 U 1 1 6057BAB5
 P 5700 2300
 F 0 "R15" V 5800 2250 50  0000 R CNN
@@ -681,7 +681,7 @@ Wire Wire Line
 	5800 2300 5900 2300
 Connection ~ 5900 2300
 $Comp
-L Device:R_Small R16
+L power-rescue:R_Small-Device R16
 U 1 1 605AB44F
 P 5700 2500
 F 0 "R16" V 5600 2450 50  0000 R CNN
@@ -815,7 +815,7 @@ Wire Wire Line
 Wire Wire Line
 	7950 5800 7950 5600
 $Comp
-L Device:R_Small R24
+L power-rescue:R_Small-Device R24
 U 1 1 604C17DE
 P 7700 5250
 F 0 "R24" H 7850 5200 50  0000 R CNN
@@ -826,7 +826,7 @@ F 3 "~" H 7700 5250 50  0001 C CNN
 	-1   0    0    1   
 $EndComp
 $Comp
-L Device:R_Small R25
+L power-rescue:R_Small-Device R25
 U 1 1 604C17E4
 P 7700 5650
 F 0 "R25" H 7850 5600 50  0000 R CNN
@@ -870,7 +870,7 @@ Connection ~ 7700 5400
 Wire Wire Line
 	7700 5400 7700 5550
 $Comp
-L Device:R_Small R26
+L power-rescue:R_Small-Device R26
 U 1 1 604F35AC
 P 8700 5000
 F 0 "R26" H 8900 4950 50  0000 R CNN
@@ -881,7 +881,7 @@ F 3 "~" H 8700 5000 50  0001 C CNN
 	-1   0    0    1   
 $EndComp
 $Comp
-L Device:R_Small R27
+L power-rescue:R_Small-Device R27
 U 1 1 604F4DFA
 P 8800 5000
 F 0 "R27" H 9000 4950 50  0000 R CNN
@@ -965,7 +965,7 @@ Wire Wire Line
 Wire Wire Line
 	5350 3400 5400 3400
 $Comp
-L Device:R_Small R12
+L power-rescue:R_Small-Device R12
 U 1 1 6049C932
 P 5450 3400
 F 0 "R12" V 5300 3450 50  0000 R CNN
@@ -1224,7 +1224,7 @@ Wire Wire Line
 Wire Wire Line
 	4650 1150 5250 1150
 $Comp
-L Device:Q_PMOS_GSD Q3
+L power-rescue:Q_PMOS_GSD-Device Q3
 U 1 1 605084D9
 P 5350 1750
 F 0 "Q3" H 5555 1796 50  0000 L CNN
@@ -1250,7 +1250,7 @@ Connection ~ 5250 1150
 Wire Wire Line
 	5250 1150 5550 1150
 $Comp
-L Device:R_Small R13
+L power-rescue:R_Small-Device R13
 U 1 1 6059B2B5
 P 5550 1250
 F 0 "R13" H 5500 1200 50  0000 R CNN
@@ -1264,7 +1264,7 @@ Connection ~ 5550 1150
 Wire Wire Line
 	5550 1150 8150 1150
 $Comp
-L Device:R_Small R14
+L power-rescue:R_Small-Device R14
 U 1 1 60696089
 P 5550 1850
 F 0 "R14" H 5500 1800 50  0000 R CNN
@@ -1290,7 +1290,7 @@ Wire Wire Line
 Wire Wire Line
 	5500 2100 6800 2100
 $Comp
-L Device:Q_NMOS_GSD Q4
+L power-rescue:Q_NMOS_GSD-Device Q4
 U 1 1 605B5E48
 P 6450 1550
 F 0 "Q4" H 6550 1400 50  0000 L CNN
@@ -1347,7 +1347,7 @@ Wire Wire Line
 Wire Wire Line
 	5550 1750 5900 1750
 $Comp
-L Device:R_Small R22
+L power-rescue:R_Small-Device R22
 U 1 1 605BA937
 P 6550 1750
 F 0 "R22" V 6450 1800 50  0000 R CNN
@@ -1363,7 +1363,7 @@ Connection ~ 6650 1550
 Wire Wire Line
 	6650 1550 6800 1550
 $Comp
-L Device:Thermistor_NTC TH1
+L power-rescue:Thermistor_NTC-Device TH1
 U 1 1 6094600D
 P 2600 3550
 F 0 "TH1" H 2697 3596 50  0000 L CNN
@@ -1374,7 +1374,7 @@ F 3 "~" H 2600 3600 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Device:R_Small R3
+L power-rescue:R_Small-Device R3
 U 1 1 60947665
 P 2600 3900
 F 0 "R3" H 2750 3850 50  0000 R CNN
@@ -1416,7 +1416,7 @@ Connection ~ 2600 3750
 Wire Wire Line
 	2600 3750 2600 3700
 $Comp
-L Device:R_Small R20
+L power-rescue:R_Small-Device R20
 U 1 1 60A1011C
 P 6600 5850
 F 0 "R20" H 6800 5800 50  0000 R CNN
@@ -1427,7 +1427,7 @@ F 3 "~" H 6600 5850 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Device:R_Small R18
+L power-rescue:R_Small-Device R18
 U 1 1 60A1092C
 P 6350 5850
 F 0 "R18" H 6550 5800 50  0000 R CNN
@@ -1466,7 +1466,7 @@ Connection ~ 6350 5500
 Wire Wire Line
 	6350 5500 5400 5500
 $Comp
-L Device:R_Small R17
+L power-rescue:R_Small-Device R17
 U 1 1 60A5DBF1
 P 5950 4950
 F 0 "R17" H 6150 4900 50  0000 R CNN
@@ -1478,7 +1478,7 @@ F 4 "stock" H 5950 4950 50  0001 C CNN "P/N"
 	-1   0    0    1   
 $EndComp
 $Comp
-L Device:R_Small R19
+L power-rescue:R_Small-Device R19
 U 1 1 60A6033F
 P 6150 4750
 F 0 "R19" H 6350 4700 50  0000 R CNN
@@ -1490,7 +1490,7 @@ F 4 "stock" H 6150 4750 50  0001 C CNN "P/N"
 	-1   0    0    1   
 $EndComp
 $Comp
-L Device:R_Small R21
+L power-rescue:R_Small-Device R21
 U 1 1 60A60988
 P 6400 4950
 F 0 "R21" H 6600 4900 50  0000 R CNN
@@ -1502,7 +1502,7 @@ F 4 "stock" H 6400 4950 50  0001 C CNN "P/N"
 	-1   0    0    1   
 $EndComp
 $Comp
-L Device:R_Small R23
+L power-rescue:R_Small-Device R23
 U 1 1 60A610DF
 P 6600 4750
 F 0 "R23" H 6800 4700 50  0000 R CNN
@@ -1529,7 +1529,7 @@ Wire Wire Line
 	5500 5900 5400 5900
 NoConn ~ 1800 1800
 $Comp
-L Device:Q_PMOS_GSD Q2
+L power-rescue:Q_PMOS_GSD-Device Q2
 U 1 1 604F9FE0
 P 5350 1350
 F 0 "Q2" H 5555 1304 50  0000 L CNN
@@ -1543,7 +1543,7 @@ $EndComp
 Wire Wire Line
 	4450 1550 4450 2200
 $Comp
-L Device:R_POT_Small RV2
+L power-rescue:R_POT_Small-Device RV2
 U 1 1 60652FE8
 P 4450 2350
 F 0 "RV2" H 4391 2396 50  0000 R CNN
@@ -1560,7 +1560,7 @@ Wire Wire Line
 	4550 2350 4550 2200
 NoConn ~ 4450 2250
 $Comp
-L Device:R_Small R7
+L power-rescue:R_Small-Device R7
 U 1 1 6069273B
 P 4100 2600
 F 0 "R7" H 4250 2550 50  0000 R CNN
@@ -1571,7 +1571,7 @@ F 3 "~" H 4100 2600 50  0001 C CNN
 	-1   0    0    1   
 $EndComp
 $Comp
-L Device:R_POT_Small RV1
+L power-rescue:R_POT_Small-Device RV1
 U 1 1 60692B9C
 P 4100 2350
 F 0 "RV1" H 4041 2396 50  0000 R CNN
@@ -1598,7 +1598,7 @@ Wire Wire Line
 Wire Wire Line
 	4100 2700 4100 2750
 $Comp
-L Device:Q_NMOS_GSD Q1
+L power-rescue:Q_NMOS_GSD-Device Q1
 U 1 1 6076683C
 P 4200 2950
 F 0 "Q1" H 4300 2800 50  0000 L CNN
@@ -1613,7 +1613,7 @@ Wire Wire Line
 	4650 2800 4450 2800
 Connection ~ 4650 2800
 $Comp
-L Device:R_Small R10
+L power-rescue:R_Small-Device R10
 U 1 1 607781B9
 P 4450 3050
 F 0 "R10" V 4350 3100 50  0000 R CNN

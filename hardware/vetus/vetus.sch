@@ -490,7 +490,7 @@ NoConn ~ 3800 3950
 NoConn ~ 3800 4050
 NoConn ~ 3800 4150
 $Comp
-L mcp4706:MCP4706 U11
+L vetus-rescue:MCP4706-mcp4706 U11
 U 1 1 605077D8
 P 5000 6250
 F 0 "U11" H 5200 6250 60  0000 L CNN
@@ -648,7 +648,7 @@ Wire Wire Line
 NoConn ~ 5400 4150
 NoConn ~ 5400 4250
 $Comp
-L linear-local:NSI45020T1G U5
+L vetus-rescue:NSI45020T1G-linear-local U5
 U 1 1 6056B120
 P 1350 5450
 F 0 "U5" V 1500 5400 50  0000 L CNN
@@ -674,7 +674,7 @@ S
 Wire Wire Line
 	1750 5450 1850 5450
 $Comp
-L linear-local:NSI45020T1G U6
+L vetus-rescue:NSI45020T1G-linear-local U6
 U 1 1 60592D3A
 P 1350 5900
 F 0 "U6" V 1500 5850 50  0000 L CNN
@@ -700,7 +700,7 @@ SW
 Wire Wire Line
 	1750 5900 1850 5900
 $Comp
-L linear-local:NSI45020T1G U7
+L vetus-rescue:NSI45020T1G-linear-local U7
 U 1 1 60596429
 P 1350 6350
 F 0 "U7" V 1500 6300 50  0000 L CNN
@@ -726,7 +726,7 @@ W
 Wire Wire Line
 	1750 6350 1850 6350
 $Comp
-L linear-local:NSI45020T1G U8
+L vetus-rescue:NSI45020T1G-linear-local U8
 U 1 1 60599C80
 P 1350 6800
 F 0 "U8" V 1500 6750 50  0000 L CNN
@@ -752,7 +752,7 @@ NW
 Wire Wire Line
 	1750 6800 1850 6800
 $Comp
-L linear-local:NSI45020T1G U1
+L vetus-rescue:NSI45020T1G-linear-local U1
 U 1 1 605A2132
 P 1350 3650
 F 0 "U1" V 1500 3600 50  0000 L CNN
@@ -778,7 +778,7 @@ N
 Wire Wire Line
 	1750 3650 1850 3650
 $Comp
-L linear-local:NSI45020T1G U2
+L vetus-rescue:NSI45020T1G-linear-local U2
 U 1 1 605A2140
 P 1350 4100
 F 0 "U2" V 1500 4050 50  0000 L CNN
@@ -804,7 +804,7 @@ NE
 Wire Wire Line
 	1750 4100 1850 4100
 $Comp
-L linear-local:NSI45020T1G U3
+L vetus-rescue:NSI45020T1G-linear-local U3
 U 1 1 605A214E
 P 1350 4550
 F 0 "U3" V 1500 4500 50  0000 L CNN
@@ -830,7 +830,7 @@ E
 Wire Wire Line
 	1750 4550 1850 4550
 $Comp
-L linear-local:NSI45020T1G U4
+L vetus-rescue:NSI45020T1G-linear-local U4
 U 1 1 605A215C
 P 1350 5000
 F 0 "U4" V 1500 4950 50  0000 L CNN
@@ -1015,4 +1015,8 @@ F 3 "" H 5350 5850 50  0001 C CNN
 $EndComp
 Wire Wire Line
 	5300 5850 5350 5850
+Text Label 7400 4150 0    50   ~ 0
+CANH
+Text Label 7400 4250 0    50   ~ 0
+CANL
 $EndSCHEMATC
