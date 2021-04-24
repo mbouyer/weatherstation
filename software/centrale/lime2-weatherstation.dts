@@ -1,0 +1,66 @@
+#include "sun7i-a20-olinuxino-lime2.dts"
+
+&pio {
+	spi2_pc_pins: spi2-pc-pins {
+		pins = "PC20", "PC21", "PC22";
+		function = "spi2";
+	};
+
+											spi2_cs0_pc_pin: spi2-cs0-pc-pin {
+		pins = "PC19";
+		function = "spi2";
+	};
+};
+
+&spi2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi2_pc_pins>, <&spi2_cs0_pc_pin>;
+	status = "okay";
+};
+
+&rtc {
+	status = "disabled";
+};
+
+&i2c1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c1_pins>;
+	status = "okay";
+
+	dsrtc: dsrtc@6f {
+		compatible = "microchip,mcp7940";
+		reg = <0x6f>;
+	};
+
+};
+
+&can0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&can_ph_pins>;
+	status = "okay";
+};
+
+&lradc {
+	vref-supply = <&reg_vcc3v0>;
+	status = "okay";
+	button@down {
+		label = "down";
+		channel = <0>;
+		voltage = <191000>;
+	};
+	button@up {
+		label = "up";
+		channel = <0>;
+		voltage = <391000>;
+	};
+	button@left {
+		label = "left";
+		channel = <0>;
+		voltage = <600000>;
+	};
+	button@right {
+		label = "right";
+		channel = <0>;
+		voltage = <794000>;
+	};
+};

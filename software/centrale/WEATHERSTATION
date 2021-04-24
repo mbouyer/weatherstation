@@ -1,0 +1,8 @@
+include "arch/evbarm/conf/GENERIC"
+no makeoptions	DTS
+makeoptions	DTS="lime2-weatherstation.dts"
+no makeoptions  CPUFLAGS
+makeoptions     CPUFLAGS="-mcpu=cortex-a7 -mfpu=neon -mno-unaligned-access"
+
+no options 	WSDISPLAY_MULTICONS
+dsrtc* at iic1 addr 0x6f
