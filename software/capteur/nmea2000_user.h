@@ -38,17 +38,6 @@ extern unsigned long nmea2000_user_id;
 #define NMEA2000_USER_INDUSTRY_GROUP 4
 #define NMEA2000_USER_SYSTEM_INSTANCE 0
 
-#define NMEA2000_USER_NAME { \
-	((N2000_ID >> 13) & 0xff), /* unique number */ \
-	((N2000_ID) >> 5) & 0xff, /* unique number */ \
-	((N2000_ID & 0x1f) << 3) | ((0x7fe >> 8) & 0x7), /* unique number | manuf. code */, \
-	(0x7fe & 0xff), /* manuf. code */, \
-	0, /* device instance */ \
-	160, /* device function */ \
-	(40 << 1), /* device class */ \
-	0x80 | (4 << 4) | 0 /* inductry group | system instance */ \
-}
-
 #define BRGCON1_uval (0x01 | 0x40)
 #define BRGCON2_uval (0x80 | 2 << 3 | 2)
 #define BRGCON3_uval (0x80 | 2)
