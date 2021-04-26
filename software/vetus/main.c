@@ -34,6 +34,7 @@
 #include <nmea2000_pgn.h>
 #include <raddeg.h>
 #include "serial.h"
+#include "i2c.h"
 
 extern unsigned char stack; 
 extern unsigned char stack_end;
@@ -54,6 +55,12 @@ static unsigned char nmea2000_data[NMEA2000_DATA_LENGTH];
 
 unsigned int timer0_read(void);
 #pragma callee_saves timer0_read
+
+#define DAC_ADDR 0x61
+#define DAC_WRITE_DAC		0x00
+#define DAC_WRITE_VOL		0x02
+#define DAC_WRITE_ALL		0x03
+#define DAC_WRITE_CONF_VOL	0x04
 
 #define TIMER0_5MS 48
 
@@ -115,6 +122,7 @@ main(void) __naked
 {
 	char c;
 	static unsigned int poll_count;
+	static unsigned char i2cdata[4];
 
 	sid = 0;
 
@@ -154,6 +162,7 @@ main(void) __naked
 	T0CONbits.TMR0ON = 1;
 
 	USART_INIT(0);
+	I2C_INIT;
 
 	INTCONbits.GIE_GIEH=1;  /* enable high-priority interrupts */   
 	INTCONbits.PEIE_GIEL=1; /* enable low-priority interrrupts */   
@@ -193,10 +202,32 @@ main(void) __naked
 
 	printf(", addr %d, id %ld\n", nmea2000_addr, nmea2000_user_id);
 
-	usart_putchar('c');
-	usart_putchar('h');
-	usart_putchar('\n');
-	usart_putchar('\r');
+i2c_retry:
+	i2c_read(DAC_ADDR, &i2cdata[0], sizeof(i2cdata));
+	printf("i2c data:");
+	for (int c = 0; c < 4; c++) {
+		printf(" 0x%x", i2cdata[c]);
+	}
+	printf("\n");
+	if ((i2cdata[0] & 0xe0) != 0xc0 || (i2cdata[2] & 0xe0) != 0xe0) {
+		printf("i2c read failed\n");
+		goto i2c_retry;
+	}
+
+	/* start with vref buffered, DAC 0 */
+	if ((i2cdata[2] & 0x1f) != 0x18 || i2cdata[3] != 0) {
+		printf("write DAC eeprom\n");
+		i2cdata[0] = (DAC_WRITE_ALL << 5) |
+			     (0x3 << 3); /* vref buffered */
+		i2cdata[1] = 0;
+		i2cdata[2] = 0;
+		i2c_write(DAC_ADDR, &i2cdata[0], 3);
+	}
+
+	/* test: output vref / 2 */
+	i2cdata[0] = (DAC_WRITE_DAC << 5);
+	i2cdata[1] = 128;
+	i2c_write(DAC_ADDR, &i2cdata[0], 2);
 
 again:
 	printf("hello user_id 0x%lx devid 0x%lx\n", nmea2000_user_id, devid);
