@@ -8,7 +8,8 @@ CFLAGS+= -I${.CURDIR} -I${.CURDIR}/../../../pic18_n2k
 OBJECTS= main.o serial.o nmea2000.o raddeg.o
 HEADERS= serial.h nmea2000.h nmea2000_pgn.h nmea2000_user.h raddeg.h
 
-all: vetus.bin
+all: vetus.hex
+bin: vetus.bin
 
 obj:
 	mkdir obj
