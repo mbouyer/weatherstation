@@ -1,5 +1,17 @@
 #include "sun7i-a20-olinuxino-lime2.dts"
 
+&ahci {
+	status = "disabled";
+};
+
+&de {
+	status = "disabled";
+};
+
+&hdmi {
+	status = "disabled";
+};
+
 &pio {
 	spi2_pc_pins: spi2-pc-pins {
 		pins = "PC20", "PC21", "PC22";
