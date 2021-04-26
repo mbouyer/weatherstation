@@ -8,16 +8,16 @@ CFLAGS+= -I${.CURDIR} -I${.CURDIR}/../../../pic18_n2k
 OBJECTS= main.o serial.o nmea2000.o raddeg.o
 HEADERS= serial.h nmea2000.h nmea2000_pgn.h nmea2000_user.h raddeg.h
 
-all: power.bin
+all: capteur.bin
 
 obj:
 	mkdir obj
 
-power.bin: power.hex
+capteur.bin: capteur.hex
 	hex2bin1k ${.ALLSRC} ${.TARGET}
 	@ls -lh ${.TARGET}
 
-power.hex: ${OBJECTS}
+capteur.hex: ${OBJECTS}
 	${CC} -V -Wl,-s${.CURDIR}/pic18f26k80.lkr --no-crt --ivt-loc=0x400 --obanksel=2 -mpic16 -p18f26k80 -Wl,libc18f.lib ${.ALLSRC} -o ${.TARGET} -llibm18f.lib
 
 ${OBJECTS}: ${HEADERS} Makefile
@@ -26,4 +26,4 @@ ${OBJECTS}: ${HEADERS} Makefile
 	${CC} ${CFLAGS} -V --no-crt --ivt-loc=0x400 --obanksel=2 -mpic16 -p18f26k80 -c ${.IMPSRC} -o ${.TARGET}
 
 clean:
-	rm -f power.bin *.o *.hex *.cod *.lst *.asm
+	rm -f capteur.bin *.o *.hex *.cod *.lst *.asm
