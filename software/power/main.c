@@ -59,6 +59,14 @@ unsigned int timer0_read(void);
 
 #define CLRWDT __asm__("clrwdt")
 
+#define LEDBATT_G LATCbits.LATC2
+#define LEDBATT_R LATCbits.LATC6
+
+#define LEDPWR_G LATCbits.LATC0
+#define LEDPWR_R LATCbits.LATC1
+
+#define BATT_ON LATCbits.LATC7
+
 void
 user_handle_iso_request(unsigned long pgn)
 {
@@ -132,6 +140,19 @@ main(void) __naked
 	movff _TABLAT, _devid + 1;
 	__endasm;
 
+	LEDBATT_R = 0;
+	LEDBATT_G = 0;
+	LEDPWR_R = 0;
+	LEDPWR_G = 0;
+	BATT_ON = 0;
+	TRISCbits.TRISC2 = 0;
+	TRISCbits.TRISC6 = 0;
+	TRISCbits.TRISC0 = 0;
+	TRISCbits.TRISC1 = 0;
+	TRISCbits.TRISC7 = 0;
+
+	LEDPWR_R = 1;
+
 	/* configure sleep mode: PRI_IDLE */
 	OSCCONbits.SCS = 0;
 	OSCCONbits.IDLEN = 1;
@@ -198,6 +219,11 @@ main(void) __naked
 	usart_putchar('\n');
 	usart_putchar('\r');
 
+	LEDPWR_G = 1;
+	LEDPWR_R = 0;
+	BATT_ON  = 1;
+	LEDBATT_G = 1;
+	printf("portc 0x%x latc 0x%x trisc 0x%x\n", PORTC, LATC, TRISC);
 again:
 	printf("hello user_id 0x%lx devid 0x%lx\n", nmea2000_user_id, devid);
 	while (1) {
