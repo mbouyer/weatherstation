@@ -93,6 +93,8 @@ static volatile union softintrs {
 	char byte;
 } softintrs;
 
+unsigned long input_volt;
+
 static void
 send_batt_status(void)
 {
@@ -188,6 +190,7 @@ main(void) __naked
 	char c;
 	static unsigned int poll_count;
 	static uint16_t i2cval;
+	static uint16_t a2d_acc;
 
 	sid = 0;
 
@@ -280,6 +283,13 @@ main(void) __naked
 	/* enable watch dog timer */
 	WDTCON = 0x01;
 
+	/* set up ADC */
+	PIR1bits.ADIF = 0;
+	ADCON0 = (1 << 2); /* select channel 1 */
+	ADCON1 = 0x20; /* vref = 2.0 */
+	ADCON2 = 0xbd; /* Right justified, 20Tad Aq, Fosc/16 */
+	ADCON0bits.ADON = 1;
+
 	printf("\nready");
 	poll_count = timer0_read();
 	while (nmea2000_addr_status != ADDR_STATUS_OK) {
@@ -352,6 +362,15 @@ again:
 				printf("new addr %d\n", nmea2000_addr);
 			}
 		};
+		if (PIR1bits.ADIF) {
+			PIR1bits.ADIF = 0;
+			a2d_acc = ((unsigned int)ADRESH << 8) | ADRESL;
+			/* lsb = 2 / 4096 * 11.8 / 1.8 = 3.2mV */
+			input_volt = (unsigned long)a2d_acc * 32UL / 10;
+			printf("power voltage %d.%03dV\n",
+			    (int)(input_volt / 1000),
+			    (int)(input_volt % 1000));
+		}
 		if (softintrs.bits.int_10hz) {
 			softintrs.bits.int_10hz = 0;
 			counter_1hz--;
@@ -368,6 +387,7 @@ again:
 				//}
 				send_batt_status();
 				sid++;
+				ADCON0bits.GO = 1;
 noi2c:
 				{}
 			}
