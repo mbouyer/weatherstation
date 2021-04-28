@@ -34,6 +34,7 @@
 #include <nmea2000_pgn.h>
 #include <raddeg.h>
 #include "serial.h"
+#include "i2c.h"
 
 extern unsigned char stack; 
 extern unsigned char stack_end;
@@ -66,6 +67,20 @@ unsigned int timer0_read(void);
 #define LEDPWR_R LATCbits.LATC1
 
 #define BATT_ON LATCbits.LATC7
+
+#define INA226_ADDR 0x40
+
+#define INA_CONFIG	0x00
+#define INA_SHUNTV	0x01
+#define INA_BUS		0x02
+#define INA_POWER	0x03
+#define INA_CURRENT	0x04
+#define INA_CAL		0x05
+#define INA_MASK	0x06
+#define INA_ALERT	0x07
+#define INA_MANUF	0xfe
+#define INA_DIE 	0xff
+
 
 void
 user_handle_iso_request(unsigned long pgn)
@@ -123,6 +138,7 @@ main(void) __naked
 {
 	char c;
 	static unsigned int poll_count;
+	static uint16_t i2cval;
 
 	sid = 0;
 
@@ -175,6 +191,7 @@ main(void) __naked
 	T0CONbits.TMR0ON = 1;
 
 	USART_INIT(0);
+	I2C_INIT;
 
 	INTCONbits.GIE_GIEH=1;  /* enable high-priority interrupts */   
 	INTCONbits.PEIE_GIEL=1; /* enable low-priority interrrupts */   
@@ -223,7 +240,16 @@ main(void) __naked
 	LEDPWR_R = 0;
 	BATT_ON  = 1;
 	LEDBATT_G = 1;
-	printf("portc 0x%x latc 0x%x trisc 0x%x\n", PORTC, LATC, TRISC);
+
+	if (i2c_readreg(INA226_ADDR, INA_MANUF, &i2cval) == 0)
+		printf("i2c INA_MANUF fail\n");
+	else
+		printf("INA226 manuf 0x%x", i2cval);
+	if (i2c_readreg(INA226_ADDR, INA_DIE, &i2cval) == 0)
+		printf("i2c INA_DIE fail\n");
+	else
+		printf(" die 0x%x\n", i2cval);
+
 again:
 	printf("hello user_id 0x%lx devid 0x%lx\n", nmea2000_user_id, devid);
 	while (1) {
