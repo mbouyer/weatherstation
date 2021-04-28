@@ -72,7 +72,7 @@ unsigned int timer0_read(void);
 
 #define INA_CONFIG	0x00
 #define INA_SHUNTV	0x01
-#define INA_BUS		0x02
+#define INA_BUSV	0x02
 #define INA_POWER	0x03
 #define INA_CURRENT	0x04
 #define INA_CAL		0x05
@@ -81,24 +81,73 @@ unsigned int timer0_read(void);
 #define INA_MANUF	0xfe
 #define INA_DIE 	0xff
 
+static char counter_10hz;
+static char counter_1hz;
+static volatile union softintrs {
+	struct softintrs_bits {
+		char int_10hz : 1;	/* 0.1s timer */
+		char int_att  : 1;	/* got new attitude message */
+		char int_rot  : 1;	/* got new rate of turn message */
+		char int_ledo : 1;	/* toggle LED in timer intr handler */
+	} bits;
+	char byte;
+} softintrs;
+
+static void
+send_batt_status(void)
+{
+	static unsigned int i2cval;
+	struct nmea2000_battery_status_data *data = (void *)&nmea2000_data[0];
+	float v;
+
+	PGN2ID(NMEA2000_BATTERY_STATUS, msg.id);
+	msg.id.priority = NMEA2000_PRIORITY_INFO;
+	msg.dlc = sizeof(struct nmea2000_battery_status_data);
+	msg.data = &nmea2000_data[0];
+	if (i2c_readreg(INA226_ADDR, INA_SHUNTV, &i2cval) == 0)
+		printf("i2c INA_SHUNTV fail\n");
+	printf("shuntv %d", i2cval);
+	if (i2c_readreg(INA226_ADDR, INA_BUSV, &i2cval) == 0) {
+		printf("i2c INA_BUSV fail\n");
+		data->voltage = (int)0xffff;
+	} else {
+		v = i2cval;
+		v = (v * 1.25 / 10.0);
+		data->voltage = v;
+	}
+	printf(" busv %d", i2cval);
+	if (i2c_readreg(INA226_ADDR, INA_CURRENT, &i2cval) == 0) {
+		printf("i2c INA_CURRENT fail\n");
+		data->current = (int)0xffff;
+	} else {
+		v = i2cval;
+		/*
+		 * current should be in A * 10 but for our small battery
+		 * it's not precise enough. Use mA * 10, which matches
+		 * INA_CURRENT
+		 */
+		data->current = (int16_t)i2cval;
+	}
+	printf(" current %d", i2cval);
+	if (i2c_readreg(INA226_ADDR, INA_POWER, &i2cval) == 0)
+		printf("i2c INA_POWER fail\n");
+	printf(" power %d\n", i2cval);
+	data->temp = 0xffff; /* XXX */
+	data->sid = sid;
+	data->instance = 0;
+	if (! nmea2000_send_single_frame(&msg))
+		printf("send NMEA2000_BATTERY_STATUS failed\n");
+}
 
 void
 user_handle_iso_request(unsigned long pgn)
 {
 	printf("ISO_REQUEST for %ld from %d\n", pgn, rid.saddr);
-#if 0
 	switch(pgn) {
-	case PRIVATE_COMPASS_OFFSET:
-		send_private_compass_offset(rid.saddr);
-		break;
-	case NMEA2000_RATEOFTURN:
-		send_nmea2000_rateofturn();
-		break;
-	case NMEA2000_ATTITUDE:
-		send_nmea2000_attitude();
+	case NMEA2000_BATTERY_STATUS:
+		send_batt_status();
 		break;
 	}
-#endif
 }
 
 void
@@ -141,6 +190,10 @@ main(void) __naked
 	static uint16_t i2cval;
 
 	sid = 0;
+
+	softintrs.byte = 0;
+	counter_10hz = 25;
+	counter_1hz = 10;
 
 	devid = 0;
 	__asm
@@ -189,6 +242,15 @@ main(void) __naked
 	INTCONbits.TMR0IF = 0;
 	INTCONbits.TMR0IE = 0; /* no interrupt */
 	T0CONbits.TMR0ON = 1;
+
+	/* configure timer2 for 250Hz interrupt */
+	PMD1bits.TMR2MD=0;
+	T2CON = 0x23; /* b00100011: postscaller 1/5, prescaler 1/16 */
+	PR2 = 125; /* 250hz output */
+	T2CONbits.TMR2ON = 1;
+	PIR1bits.TMR2IF = 0;
+	IPR1bits.TMR2IP = 1; /* high priority interrupt */
+	PIE1bits.TMR2IE = 1;
 
 	USART_INIT(0);
 	I2C_INIT;
@@ -250,6 +312,29 @@ main(void) __naked
 	else
 		printf(" die 0x%x\n", i2cval);
 
+	i2cval = 0x0f6f; /* average = 1024, timev = 2.16ms, timec = 2.16ms,
+			    continous bus & shut */
+	 if (i2c_writereg(INA226_ADDR, INA_CONFIG, i2cval) == 0)
+		printf("i2cwr INA_CONFIG fail\n");
+
+	/*
+	 * current_lsb = Imax / 2^15 = 3 / 2^15 = 91.55uA
+	 * choose current_lsb = 100uA
+	 * CAL = 0.00512 / (current_lsb * Rshunt) = 0.00512 / 100u * 0.039
+	 * CAL = 1312.8
+	 */
+	 i2cval = 1313;
+	 if (i2c_writereg(INA226_ADDR, INA_CAL, i2cval) == 0)
+		printf("i2cwr INA_CAL fail\n");
+	if (i2c_readreg(INA226_ADDR, INA_CONFIG, &i2cval) == 0)
+		printf("i2c INA_CONFIG fail\n");
+	else
+		printf("INA226 config 0x%x", i2cval);
+	if (i2c_readreg(INA226_ADDR, INA_CAL, &i2cval) == 0)
+		printf("i2c INA_CAL fail\n");
+	else
+		printf(" cal 0x%x\n", i2cval);
+
 again:
 	printf("hello user_id 0x%lx devid 0x%lx\n", nmea2000_user_id, devid);
 	while (1) {
@@ -267,6 +352,26 @@ again:
 				printf("new addr %d\n", nmea2000_addr);
 			}
 		};
+		if (softintrs.bits.int_10hz) {
+			softintrs.bits.int_10hz = 0;
+			counter_1hz--;
+			if (counter_1hz == 0) {
+				counter_1hz = 10;
+				if (i2c_readreg(INA226_ADDR,
+				    INA_ALERT, &i2cval) == 0) {
+					printf("i2c INA_ALERT fail\n");
+					goto noi2c;
+				}
+				printf("INA_ALERT 0x%x\n", i2cval);
+				//if ((i2cval & 0x8) == 0) {
+				//	goto noi2c; /* no new data */
+				//}
+				send_batt_status();
+				sid++;
+noi2c:
+				{}
+			}
+		}
 
 		if (RCREG2 == 'r')
 			break;
@@ -334,6 +439,27 @@ void _startup (void) __naked
  */
 void _irqh (void) __naked __shadowregs __interrupt 1
 {
+	__asm
+	btfss _PIR1, 1
+	bra other
+	bcf   _PIR1, 1
+	goto _irqh_timer2
+other:
+	retfie 1
+	nop
+	__endasm ;
+}
+
+void irqh_timer2(void) __naked
+{
+	/*
+	 * no sdcc registers are automatically saved,
+	 * so we have to be carefull with C code !
+	 */
+	if (--counter_10hz == 0) {
+		counter_10hz = 25;
+		softintrs.bits.int_10hz = 1;
+	}			
 	__asm
 	retfie 1
 	nop
