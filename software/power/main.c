@@ -69,6 +69,8 @@ unsigned int timer0_read(void);
 
 #define BATT_ON LATCbits.LATC7
 
+#define CHRG_BULK LATBbits.LATB1
+
 #define INA226_ADDR 0x40
 
 #define INA_CONFIG	0x00
@@ -94,10 +96,26 @@ static volatile union softintrs {
 	char byte;
 } softintrs;
 
-unsigned long input_volt;
+static unsigned long input_volt;
+static uint16_t batt_v; /* Volts * 100 */
+static int16_t batt_i; /* mA * 10 */
+static uint16_t batt_temp; /* K * 100 */
 
-static uint16_t batt_temp;
 static uint16_t a2d_acc;
+
+static char ina226_ready;
+
+enum power_status {
+	ON,
+	OFF,
+	FAIL,
+	UNKOWN
+} power_status;
+
+unsigned char charger_status; /* see nmea2000_charger_status_data */
+static unsigned int time_on_bulk;
+static unsigned int time_on_abs;
+static unsigned int time_on_batt;
 
 static void
 adctotemp(void)
@@ -118,44 +136,18 @@ adctotemp(void)
 static void
 send_batt_status(void)
 {
-	static unsigned int i2cval;
 	struct nmea2000_battery_status_data *data = (void *)&nmea2000_data[0];
-	float v;
+
+	if (charger_status == CHARGER_STATE_FAULT)
+		return;
 
 	PGN2ID(NMEA2000_BATTERY_STATUS, msg.id);
 	msg.id.priority = NMEA2000_PRIORITY_INFO;
 	msg.dlc = sizeof(struct nmea2000_battery_status_data);
 	msg.data = &nmea2000_data[0];
-	if (i2c_readreg(INA226_ADDR, INA_SHUNTV, &i2cval) == 0)
-		printf("i2c INA_SHUNTV fail\n");
-	printf("shuntv %d", i2cval);
-	if (i2c_readreg(INA226_ADDR, INA_BUSV, &i2cval) == 0) {
-		printf("i2c INA_BUSV fail\n");
-		data->voltage = (int)0xffff;
-	} else {
-		v = i2cval;
-		v = (v * 1.25 / 10.0);
-		data->voltage = v;
-	}
-	printf(" busv %d", i2cval);
-	if (i2c_readreg(INA226_ADDR, INA_CURRENT, &i2cval) == 0) {
-		printf("i2c INA_CURRENT fail\n");
-		data->current = (int)0xffff;
-	} else {
-		v = i2cval;
-		/*
-		 * current should be in A * 10 but for our small battery
-		 * it's not precise enough. Use mA * 10, which matches
-		 * INA_CURRENT
-		 */
-		data->current = (int16_t)i2cval;
-	}
-	printf(" current %d", i2cval);
-	if (i2c_readreg(INA226_ADDR, INA_POWER, &i2cval) == 0)
-		printf("i2c INA_POWER fail\n");
-	printf(" power %d", i2cval);
+	data->voltage = batt_v;
+	data->current = batt_i;
 	data->temp = batt_temp;
-	printf(" temp %d\n", batt_temp);
 	data->sid = sid;
 	data->instance = 0;
 	if (! nmea2000_send_single_frame(&msg))
@@ -168,6 +160,9 @@ send_dc_status(void)
 	struct nmea2000_dc_status_data *data = (void *)&nmea2000_data[0];
 	static unsigned char fastid;
 
+	if (input_volt == 0xffff)
+		return;
+
 	fastid = (fastid + 1) & 0x7;
 	printf("power voltage %d.%03dV\n",
 	    (int)(input_volt / 1000), (int)(input_volt % 1000));
@@ -178,23 +173,52 @@ send_dc_status(void)
 	msg.data = &nmea2000_data[0];
 	data->sid = sid;
 	data->instance = 0;
-	if (input_volt > 3000) {
-		/* assume operating on main power */
+	switch(power_status) {
+	case UNKOWN:
+		return;
+	case OFF:
+		data->type = DCSTAT_TYPE_BATT;
+		if (batt_v > 1240) {
+			data->soc = 100 - (time_on_batt * 100 / 7200);
+		} else {
+			data->soc = 50 - (1240 - batt_v) * 50 / (1240 - 1100);
+		}
+		data->soh = 0xff;
+		data->timeremain = 0xffff; /* XXX compute */
+		data->ripple = 0xffff;
+		break;
+	default:
+		/* assume operating on mains power */
 		data->type = DCSTAT_TYPE_CONV;
 		data->soc = 0xff;
 		data->soh =
 		    ((unsigned long)input_volt * 100UL + 6000UL) / 12000;
 		data->timeremain = 0xffff;
 		data->ripple = 0xffff;
-	} else {
-		data->type = DCSTAT_TYPE_BATT;
-		data->soc = 100; /* XXX compute */
-		data->soh = 0xff;
-		data->timeremain = 0xffff; /* XXX compute */
-		data->ripple = 0xffff;
+		break;
 	}
 	if (! nmea2000_send_fast_frame(&msg, fastid))
 		printf("send NMEA2000_DC_STATUS failed\n");
+}
+
+static void
+send_charger_status()
+{
+	struct nmea2000_charger_status_data *data = (void *)&nmea2000_data[0];
+
+	PGN2ID(NMEA2000_CHARGER_STATUS, msg.id);
+	msg.id.priority = NMEA2000_PRIORITY_INFO;
+	msg.dlc = sizeof(struct nmea2000_charger_status_data);
+	msg.data = &nmea2000_data[0];
+	data->instance = 0;
+	data->batt_instance = 0;
+	data->op_state = charger_status;
+	data->mode = CHARGER_MODE_STANDALONE;
+	data->enable = 1;
+	data->eq_pending = 0;
+	data->eq_time_remain = 0;
+	if (! nmea2000_send_single_frame(&msg))
+		printf("send NMEA2000_CHARGER_STATUS failed\n");
 }
 
 void
@@ -207,6 +231,9 @@ user_handle_iso_request(unsigned long pgn)
 		break;
 	case NMEA2000_DC_STATUS:
 		send_dc_status();
+		break;
+	case NMEA2000_CHARGER_STATUS:
+		send_charger_status();
 		break;
 	}
 }
@@ -243,6 +270,179 @@ PUTCHAR(c)
 	}
 }
 
+static void
+handle_input_voltage()
+{
+	/* lsb = 2 / 4096 * 11.8 / 1.8 = 3.2mV */
+	input_volt = (unsigned long)a2d_acc * 32UL / 10;
+	if (input_volt > 4000) {
+		/*
+		 * assume we have enough voltage to run the step-up converter
+		 * anyway
+		 */
+		 if (input_volt < 11000) {
+			LEDPWR_G = 0;
+			LEDPWR_R = 1;
+			power_status = FAIL;
+		} else {
+			LEDPWR_R = 0;
+			LEDPWR_G = 1;
+			power_status = ON;
+		}
+	} else {
+		LEDPWR_R = 0;
+		LEDPWR_G = 0;
+		power_status = OFF;
+	}
+}
+
+static inline void
+charger_disable(void)
+{
+	LEDBATT_R = 0;
+	LEDBATT_G = 1;
+	CHRG_BULK = 0;
+	charger_status = CHARGER_STATE_DIS;
+}
+
+static inline void
+charger_float(void)
+{
+	LEDBATT_R = 0;
+	LEDBATT_G = 1;
+	CHRG_BULK = 0;
+	charger_status = CHARGER_STATE_FLOAT;
+}
+
+static void
+read_battery_data(void)
+{
+	static unsigned int i2cval;
+	float v;
+
+	if (i2c_readreg(INA226_ADDR, INA_SHUNTV, &i2cval) == 0) {
+		printf("i2c INA_SHUNTV fail\n");
+		goto fail;
+	}
+	printf("shuntv %d", i2cval);
+	if (i2c_readreg(INA226_ADDR, INA_BUSV, &i2cval) == 0) {
+		printf("i2c INA_BUSV fail\n");
+		goto fail;
+	} else {
+		v = i2cval;
+		v = (v * 1.25 / 10.0);
+		batt_v = v;
+	}
+	printf(" busv %d", i2cval);
+	if (i2c_readreg(INA226_ADDR, INA_CURRENT, &i2cval) == 0) {
+		printf("i2c INA_CURRENT fail\n");
+		goto fail;
+	} else {
+		v = i2cval;
+		/*
+		 * current should be in A * 10 but for our small battery
+		 * it's not precise enough. Use mA * 10, which matches
+		 * INA_CURRENT
+		 */
+		batt_i = -((int16_t)i2cval); /* negative values for discharge */
+	}
+	printf(" current %d", i2cval);
+	if (i2c_readreg(INA226_ADDR, INA_POWER, &i2cval) == 0) {
+		printf("i2c INA_POWER fail\n");
+		goto fail;
+	}
+	printf(" power %d", i2cval);
+	printf(" temp %d\n", batt_temp);
+
+	if (power_status == OFF) {
+		/* running on battery */
+		charger_disable();
+		if (batt_v < 1100) {
+			/*
+			 * switch off to protect battery
+			 * this is likely going to kill us
+			 */
+			LEDBATT_R = 0;
+			LEDBATT_G = 0;
+			BATT_ON = 0;
+		}
+		time_on_batt++;
+		return;
+	}
+
+	time_on_batt = 0;
+	if (batt_temp > 30800) { /* 35 degC */
+		charger_disable();
+		LEDBATT_R = 1;
+		BATT_ON = 0;
+		return;
+	}
+
+	/* now handle charger state */
+	switch(charger_status) {
+	case CHARGER_STATE_FAULT:
+	case CHARGER_STATE_NOCHRG:
+	case CHARGER_STATE_DIS:
+		/* recover from fault, or power up */
+		if (batt_v < 900) {
+			/* battery too low, don't try */
+			charger_disable();
+			LEDBATT_R = 1;
+			BATT_ON = 0;
+			return;
+		}
+		LEDBATT_R = 0;
+		LEDBATT_G = 1;
+		BATT_ON = 1;
+		if (batt_v < 1240) {
+			CHRG_BULK = 1;
+			charger_status = CHARGER_STATE_BULK;
+			time_on_bulk = 0;
+		} else {
+			CHRG_BULK = 0;
+			charger_status = CHARGER_STATE_FLOAT;
+		}
+		return;
+	case CHARGER_STATE_FLOAT:
+		LEDBATT_G = 1;
+		LEDBATT_R = 0;
+		CHRG_BULK = 0;
+		return;
+	case CHARGER_STATE_BULK:	
+		time_on_bulk++;
+		LEDBATT_G = LEDBATT_G ^ 1;
+		if (time_on_bulk > 14400) {
+			charger_status = CHARGER_STATE_FLOAT;
+			CHRG_BULK = 0;
+		}
+		if (batt_v > 1400 && batt_i < 4500) {
+			charger_status = CHARGER_STATE_ABS;
+			time_on_abs = 0;
+		}
+		return;
+	case CHARGER_STATE_ABS:	
+		time_on_abs++;
+		LEDBATT_G = LEDBATT_G ^ 1;
+		if (time_on_abs > time_on_bulk ||
+		    batt_i < 1000) {
+			charger_status = CHARGER_STATE_FLOAT;
+			CHRG_BULK = 0;
+		}
+		return;
+	default:
+		charger_status = CHARGER_STATE_FAULT;
+		CHRG_BULK = 0;
+	}
+	return;
+fail:
+	charger_status = CHARGER_STATE_FAULT;
+	LEDBATT_G = 0;
+	LEDBATT_R = 0;
+	BATT_ON = 0;
+	CHRG_BULK = 0;
+	return;
+}
+
 void
 main(void) __naked
 {
@@ -272,18 +472,17 @@ main(void) __naked
 	movff _TABLAT, _devid + 1;
 	__endasm;
 
-	LEDBATT_R = 0;
-	LEDBATT_G = 0;
+	LEDBATT_R = 1;
+	LEDBATT_G = 1;
 	LEDPWR_R = 0;
 	LEDPWR_G = 0;
 	BATT_ON = 0;
+	CHRG_BULK = 0;
 	TRISCbits.TRISC2 = 0;
 	TRISCbits.TRISC6 = 0;
 	TRISCbits.TRISC0 = 0;
 	TRISCbits.TRISC1 = 0;
 	TRISCbits.TRISC7 = 0;
-
-	LEDPWR_R = 1;
 
 	/* configure sleep mode: PRI_IDLE */
 	OSCCONbits.SCS = 0;
@@ -320,6 +519,10 @@ main(void) __naked
 
 	INTCONbits.GIE_GIEH=1;  /* enable high-priority interrupts */   
 	INTCONbits.PEIE_GIEL=1; /* enable low-priority interrrupts */   
+
+	LEDPWR_R = 1;
+	LEDBATT_R = 0;
+	LEDBATT_G = 0;
 
 	/* read user-id from config bits */
 	nmea2000_user_id = 0;
@@ -362,32 +565,28 @@ main(void) __naked
 	}
 
 	printf(", addr %d, id %ld\n", nmea2000_addr, nmea2000_user_id);
-
-	usart_putchar('c');
-	usart_putchar('h');
-	usart_putchar('\n');
-	usart_putchar('\r');
-
-	LEDPWR_G = 1;
 	LEDPWR_R = 0;
-	BATT_ON  = 1;
-	LEDBATT_G = 1;
 
-	if (i2c_readreg(INA226_ADDR, INA_MANUF, &i2cval) == 0)
+	ina226_ready = 1;
+	if (i2c_readreg(INA226_ADDR, INA_MANUF, &i2cval) == 0) {
 		printf("i2c INA_MANUF fail\n");
-	else
+		ina226_ready = 0;
+	} else
 		printf("INA226 manuf 0x%x", i2cval);
-	if (i2c_readreg(INA226_ADDR, INA_DIE, &i2cval) == 0)
+	if (i2c_readreg(INA226_ADDR, INA_DIE, &i2cval) == 0) {
 		printf("i2c INA_DIE fail\n");
-	else
+		ina226_ready = 0;
+	} else
 		printf(" die 0x%x\n", i2cval);
 
 	i2cval = 0x4d27; /* b0100110100100111
 			  * average = 512, timev = 1.1ms, timec = 1.1ms,
 			  * continous bus & shut
 			  */
-	 if (i2c_writereg(INA226_ADDR, INA_CONFIG, i2cval) == 0)
+	 if (i2c_writereg(INA226_ADDR, INA_CONFIG, i2cval) == 0) {
 		printf("i2cwr INA_CONFIG fail\n");
+		ina226_ready = 0;
+	}
 
 	/*
 	 * current_lsb = Imax / 2^15 = 3 / 2^15 = 91.55uA
@@ -396,16 +595,24 @@ main(void) __naked
 	 * CAL = 1312.8
 	 */
 	 i2cval = 1313;
-	 if (i2c_writereg(INA226_ADDR, INA_CAL, i2cval) == 0)
+	 if (i2c_writereg(INA226_ADDR, INA_CAL, i2cval) == 0) {
 		printf("i2cwr INA_CAL fail\n");
-	if (i2c_readreg(INA226_ADDR, INA_CONFIG, &i2cval) == 0)
+		ina226_ready = 0;
+	}
+	if (i2c_readreg(INA226_ADDR, INA_CONFIG, &i2cval) == 0) {
 		printf("i2c INA_CONFIG fail\n");
-	else
+		ina226_ready = 0;
+	} else
 		printf("INA226 config 0x%x", i2cval);
-	if (i2c_readreg(INA226_ADDR, INA_CAL, &i2cval) == 0)
+	if (i2c_readreg(INA226_ADDR, INA_CAL, &i2cval) == 0) {
 		printf("i2c INA_CAL fail\n");
-	else
+		ina226_ready = 0;
+	} else
 		printf(" cal 0x%x\n", i2cval);
+
+	input_volt = 0xffff;
+	charger_status = CHARGER_STATE_NOCHRG;
+	power_status = UNKOWN;
 
 again:
 	printf("hello user_id 0x%lx devid 0x%lx\n", nmea2000_user_id, devid);
@@ -436,9 +643,9 @@ again:
 				ADCON0bits.ADON = 1;
 			} else {
 				/* channel 1: voltage */
-				/* lsb = 2 / 4096 * 11.8 / 1.8 = 3.2mV */
-				input_volt = (unsigned long)a2d_acc * 32UL / 10;
+				handle_input_voltage();
 				send_dc_status();
+				send_charger_status();
 				ADCON0bits.ADON = 0;
 				ADCON0 = (0 << 2); /* select channel 1 */
 				ADCON1 = 0; /* vref = Vdd */
@@ -449,9 +656,12 @@ again:
 			softintrs.bits.int_10hz = 0;
 			counter_1hz--;
 			if (counter_1hz == 0) {
-				counter_1hz = 10;
-				send_batt_status();
 				sid++;
+				if (sid == 0xfe)
+					sid = 0;
+				counter_1hz = 10;
+				read_battery_data();
+				send_batt_status();
 				ADCON0bits.GO = 1;
 noi2c:
 				{}
