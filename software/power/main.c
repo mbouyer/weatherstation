@@ -322,8 +322,10 @@ main(void) __naked
 	else
 		printf(" die 0x%x\n", i2cval);
 
-	i2cval = 0x0f6f; /* average = 1024, timev = 2.16ms, timec = 2.16ms,
-			    continous bus & shut */
+	i2cval = 0x4d27; /* b0100110100100111
+			  * average = 512, timev = 1.1ms, timec = 1.1ms,
+			  * continous bus & shut
+			  */
 	 if (i2c_writereg(INA226_ADDR, INA_CONFIG, i2cval) == 0)
 		printf("i2cwr INA_CONFIG fail\n");
 
