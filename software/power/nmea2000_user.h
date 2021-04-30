@@ -31,6 +31,7 @@
 extern unsigned long nmea2000_user_id;
 
 #define CAN_PORTB
+#define NEMA2000_USE_FAST_FRAME
 
 #define NMEA2000_USER_ID nmea2000_user_id /* unique number */
 #define NMEA2000_USER_MANUF 0x7feUL /* manufacturer code */
