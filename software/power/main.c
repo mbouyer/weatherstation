@@ -182,7 +182,8 @@ send_dc_status(void)
 		/* assume operating on main power */
 		data->type = DCSTAT_TYPE_CONV;
 		data->soc = 0xff;
-		data->soh = (unsigned long)input_volt * 100UL / 12000;
+		data->soh =
+		    ((unsigned long)input_volt * 100UL + 6000UL) / 12000;
 		data->timeremain = 0xffff;
 		data->ripple = 0xffff;
 	} else {
