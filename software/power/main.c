@@ -483,6 +483,7 @@ main(void) __naked
 	TRISCbits.TRISC0 = 0;
 	TRISCbits.TRISC1 = 0;
 	TRISCbits.TRISC7 = 0;
+	TRISBbits.TRISB1 = 0;
 
 	/* configure sleep mode: PRI_IDLE */
 	OSCCONbits.SCS = 0;
