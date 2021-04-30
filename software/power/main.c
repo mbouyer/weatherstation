@@ -378,15 +378,6 @@ again:
 			counter_1hz--;
 			if (counter_1hz == 0) {
 				counter_1hz = 10;
-				if (i2c_readreg(INA226_ADDR,
-				    INA_ALERT, &i2cval) == 0) {
-					printf("i2c INA_ALERT fail\n");
-					goto noi2c;
-				}
-				printf("INA_ALERT 0x%x\n", i2cval);
-				//if ((i2cval & 0x8) == 0) {
-				//	goto noi2c; /* no new data */
-				//}
 				send_batt_status();
 				sid++;
 				ADCON0bits.GO = 1;
