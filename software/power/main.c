@@ -179,7 +179,7 @@ send_dc_status(void)
 	case OFF:
 		data->type = DCSTAT_TYPE_BATT;
 		if (batt_v > 1240) {
-			data->soc = 100 - (time_on_batt * 100 / 7200);
+			data->soc = 100 - ((unsigned long)time_on_batt * 100UL / 7200UL);
 		} else {
 			data->soc = 50 - (1240 - batt_v) * 50 / (1240 - 1100);
 		}
