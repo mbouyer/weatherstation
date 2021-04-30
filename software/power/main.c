@@ -52,7 +52,7 @@ unsigned long nmea2000_user_id;
 static unsigned char sid;
 
 static struct nmea2000_msg msg;
-static unsigned char nmea2000_data[NMEA2000_DATA_LENGTH];
+static unsigned char nmea2000_data[NMEA2000_DATA_FASTLENGTH];
 
 unsigned int timer0_read(void);
 #pragma callee_saves timer0_read
@@ -162,6 +162,40 @@ send_batt_status(void)
 		printf("send NMEA2000_BATTERY_STATUS failed\n");
 }
 
+static void
+send_dc_status(void)
+{
+	struct nmea2000_dc_status_data *data = (void *)&nmea2000_data[0];
+	static unsigned char fastid;
+
+	fastid = (fastid + 1) & 0x7;
+	printf("power voltage %d.%03dV\n",
+	    (int)(input_volt / 1000), (int)(input_volt % 1000));
+
+	PGN2ID(NMEA2000_DC_STATUS, msg.id);
+	msg.id.priority = NMEA2000_PRIORITY_INFO;
+	msg.dlc = sizeof(struct nmea2000_dc_status_data);
+	msg.data = &nmea2000_data[0];
+	data->sid = sid;
+	data->instance = 0;
+	if (input_volt > 3000) {
+		/* assume operating on main power */
+		data->type = DCSTAT_TYPE_CONV;
+		data->soc = 0xff;
+		data->soh = (unsigned long)input_volt * 100UL / 12000;
+		data->timeremain = 0xffff;
+		data->ripple = 0xffff;
+	} else {
+		data->type = DCSTAT_TYPE_BATT;
+		data->soc = 100; /* XXX compute */
+		data->soh = 0xff;
+		data->timeremain = 0xffff; /* XXX compute */
+		data->ripple = 0xffff;
+	}
+	if (! nmea2000_send_fast_frame(&msg, fastid))
+		printf("send NMEA2000_DC_STATUS failed\n");
+}
+
 void
 user_handle_iso_request(unsigned long pgn)
 {
@@ -169,6 +203,9 @@ user_handle_iso_request(unsigned long pgn)
 	switch(pgn) {
 	case NMEA2000_BATTERY_STATUS:
 		send_batt_status();
+		break;
+	case NMEA2000_DC_STATUS:
+		send_dc_status();
 		break;
 	}
 }
@@ -400,9 +437,7 @@ again:
 				/* channel 1: voltage */
 				/* lsb = 2 / 4096 * 11.8 / 1.8 = 3.2mV */
 				input_volt = (unsigned long)a2d_acc * 32UL / 10;
-				printf("power voltage %d.%03dV\n",
-				    (int)(input_volt / 1000),
-				    (int)(input_volt % 1000));
+				send_dc_status();
 				ADCON0bits.ADON = 0;
 				ADCON0 = (0 << 2); /* select channel 1 */
 				ADCON1 = 0; /* vref = Vdd */
