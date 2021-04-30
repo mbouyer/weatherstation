@@ -35,6 +35,7 @@
 #include <raddeg.h>
 #include "serial.h"
 #include "i2c.h"
+#include "ntc_tab.h"
 
 extern unsigned char stack; 
 extern unsigned char stack_end;
@@ -95,6 +96,25 @@ static volatile union softintrs {
 
 unsigned long input_volt;
 
+static uint16_t batt_temp;
+static uint16_t a2d_acc;
+
+static void
+adctotemp(void)
+{
+	char i;
+	for (i = 1; temps[i].val != 0; i++) {
+		if (a2d_acc > temps[i].val) {
+			batt_temp = temps[i - 1].temp -
+			((temps[i - 1].temp - temps[i].temp)  /
+		         (temps[i - 1].val - temps[i].val)  * 
+			 (temps[i - 1].val - a2d_acc));
+			return;
+		}
+	} 
+	batt_temp = 0xffff;
+}
+
 static void
 send_batt_status(void)
 {
@@ -133,8 +153,9 @@ send_batt_status(void)
 	printf(" current %d", i2cval);
 	if (i2c_readreg(INA226_ADDR, INA_POWER, &i2cval) == 0)
 		printf("i2c INA_POWER fail\n");
-	printf(" power %d\n", i2cval);
-	data->temp = 0xffff; /* XXX */
+	printf(" power %d", i2cval);
+	data->temp = batt_temp;
+	printf(" temp %d\n", batt_temp);
 	data->sid = sid;
 	data->instance = 0;
 	if (! nmea2000_send_single_frame(&msg))
@@ -190,13 +211,14 @@ main(void) __naked
 	char c;
 	static unsigned int poll_count;
 	static uint16_t i2cval;
-	static uint16_t a2d_acc;
 
 	sid = 0;
 
 	softintrs.byte = 0;
 	counter_10hz = 25;
 	counter_1hz = 10;
+
+	batt_temp = 0xffff;
 
 	devid = 0;
 	__asm
@@ -367,11 +389,25 @@ again:
 		if (PIR1bits.ADIF) {
 			PIR1bits.ADIF = 0;
 			a2d_acc = ((unsigned int)ADRESH << 8) | ADRESL;
-			/* lsb = 2 / 4096 * 11.8 / 1.8 = 3.2mV */
-			input_volt = (unsigned long)a2d_acc * 32UL / 10;
-			printf("power voltage %d.%03dV\n",
-			    (int)(input_volt / 1000),
-			    (int)(input_volt % 1000));
+			if (((ADCON0 >> 2) & 0xf) == 0) {
+				/* channel 0: NTC */
+				adctotemp();
+				ADCON0bits.ADON = 0;
+				ADCON0 = (1 << 2); /* select channel 1 */
+				ADCON1 = 0x20; /* vref = 2.0 */
+				ADCON0bits.ADON = 1;
+			} else {
+				/* channel 1: voltage */
+				/* lsb = 2 / 4096 * 11.8 / 1.8 = 3.2mV */
+				input_volt = (unsigned long)a2d_acc * 32UL / 10;
+				printf("power voltage %d.%03dV\n",
+				    (int)(input_volt / 1000),
+				    (int)(input_volt % 1000));
+				ADCON0bits.ADON = 0;
+				ADCON0 = (0 << 2); /* select channel 1 */
+				ADCON1 = 0; /* vref = Vdd */
+				ADCON0bits.ADON = 1;
+			}
 		}
 		if (softintrs.bits.int_10hz) {
 			softintrs.bits.int_10hz = 0;
