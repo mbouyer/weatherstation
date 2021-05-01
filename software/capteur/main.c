@@ -34,6 +34,7 @@
 #include <nmea2000_pgn.h>
 #include <raddeg.h>
 #include "serial.h"
+#include "i2c.h"
 
 extern unsigned char stack; 
 extern unsigned char stack_end;
@@ -58,6 +59,35 @@ unsigned int timer0_read(void);
 #define TIMER0_5MS 48
 
 #define CLRWDT __asm__("clrwdt")
+
+static char counter_10hz;
+static char counter_1hz;
+static volatile union softintrs {
+	struct softintrs_bits {
+		char int_10hz : 1;	/* 0.1s timer */
+	} bits;
+	char byte;
+} softintrs;
+
+static enum i2c_status {
+	IDLE,
+	READ_TEMP,
+	READ_HUM,
+	SEND_TEMP,
+	SEND_HUM
+} i2c_status;
+
+#define STH20_ADDR	0x40
+#define STH20_READT_H	0xe3
+#define STH20_READH_H	0xe5
+#define STH20_READT	0xf3
+#define STH20_READH	0xf5
+#define STH20_WRITER	0xe6
+#define STH20_READR	0xe7
+#define STH20_RESET	0xfe
+
+int32_t temp; /* degK * 100 */
+uint32_t hum; /* %RH * 1000 */
 
 void
 user_handle_iso_request(unsigned long pgn)
@@ -114,9 +144,15 @@ void
 main(void) __naked
 {
 	char c;
+	uint16_t i2cval;
 	static unsigned int poll_count;
 
 	sid = 0;
+
+	softintrs.byte = 0;
+	counter_10hz = 25;
+	counter_1hz = 10;
+	i2c_status = IDLE;
 
 	devid = 0;
 	__asm
@@ -153,7 +189,17 @@ main(void) __naked
 	INTCONbits.TMR0IE = 0; /* no interrupt */
 	T0CONbits.TMR0ON = 1;
 
+	/* configure timer2 for 250Hz interrupt */
+	PMD1bits.TMR2MD=0;
+	T2CON = 0x23; /* b00100011: postscaller 1/5, prescaler 1/16 */
+	PR2 = 125; /* 250hz output */
+	T2CONbits.TMR2ON = 1;
+	PIR1bits.TMR2IF = 0;
+	IPR1bits.TMR2IP = 1; /* high priority interrupt */
+	PIE1bits.TMR2IE = 1;
+
 	USART_INIT(0);
+	I2C_INIT;
 
 	INTCONbits.GIE_GIEH=1;  /* enable high-priority interrupts */   
 	INTCONbits.PEIE_GIEL=1; /* enable low-priority interrrupts */   
@@ -193,10 +239,13 @@ main(void) __naked
 
 	printf(", addr %d, id %ld\n", nmea2000_addr, nmea2000_user_id);
 
-	usart_putchar('c');
-	usart_putchar('h');
-	usart_putchar('\n');
-	usart_putchar('\r');
+	if (i2c_writecmd(STH20_ADDR, STH20_READR) == 0) {
+		printf("STH20_READR fail\n");
+	} else {
+		i2c_readvalue(STH20_ADDR, &i2cval);
+		printf("sth20 reg 0x%x\n", i2cval);
+	}
+	i2c_status = SEND_TEMP;
 
 again:
 	printf("hello user_id 0x%lx devid 0x%lx\n", nmea2000_user_id, devid);
@@ -215,6 +264,60 @@ again:
 				printf("new addr %d\n", nmea2000_addr);
 			}
 		};
+
+		if (softintrs.bits.int_10hz) {
+			softintrs.bits.int_10hz = 0;
+			switch(i2c_status) {
+			case READ_TEMP:
+				if (i2c_readvalue(STH20_ADDR, &i2cval) != 0) {
+					temp = (int32_t)i2cval * 17572 / 65536
+					    + 22630 /* - 4685 + 27315 */;
+					printf("STH20 temp 0x%x %ld\n",
+					    i2cval, temp);
+				} else {
+					printf("READ_TEMP failed\n");
+				}
+				i2c_status = SEND_HUM;
+				break;
+			case READ_HUM:
+				if (i2c_readvalue(STH20_ADDR, &i2cval) != 0) {
+					float tmp = i2cval;
+					tmp = tmp * 125000.0 / 65536.0 - 6000.0;
+					hum = tmp;
+					printf("STH20 hum 0x%x %lu\n",
+					    i2cval, hum);
+				} else {
+					printf("READ_HUM failed\n");
+				}
+				i2c_status = SEND_TEMP;
+				break;
+			}
+			counter_1hz--;
+			if (counter_1hz == 0) {
+				sid++;
+				if (sid == 0xfe)
+					sid = 0;
+				counter_1hz = 10;
+				switch(i2c_status) {
+				case SEND_TEMP:
+					if (i2c_writecmd(STH20_ADDR,
+					    STH20_READT) != 0) {
+						i2c_status = READ_TEMP;
+					} else {
+						printf("STH20_READT failed\n");
+					}
+					break;
+				case SEND_HUM:
+					if (i2c_writecmd(STH20_ADDR,
+					    STH20_READH) != 0) {
+						i2c_status = READ_HUM;
+					} else {
+						printf("STH20_READH failed\n");
+					}
+					break;
+				}
+			}
+		}
 
 		if (RCREG2 == 'r')
 			break;
@@ -282,6 +385,27 @@ void _startup (void) __naked
  */
 void _irqh (void) __naked __shadowregs __interrupt 1
 {
+	__asm
+	btfss _PIR1, 1
+	bra other
+	bcf   _PIR1, 1
+	goto _irqh_timer2
+other:
+	retfie 1
+	nop
+	__endasm ;
+}
+
+void irqh_timer2(void) __naked
+{
+	/*
+	 * no sdcc registers are automatically saved,
+	 * so we have to be carefull with C code !
+	 */
+	if (--counter_10hz == 0) {
+		counter_10hz = 25;
+		softintrs.bits.int_10hz = 1;
+	}			
 	__asm
 	retfie 1
 	nop
