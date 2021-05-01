@@ -88,24 +88,37 @@ static enum i2c_status {
 
 int32_t temp; /* degK * 100 */
 uint32_t hum; /* %RH * 1000 */
+static char counter_sth20;
+static uint16_t i2cval;
+
+static void
+send_env_param(void)
+{
+	struct nmea2000_env_param *data = (void *)&nmea2000_data[0];
+
+	PGN2ID(NMEA2000_ENV_PARAM, msg.id);
+	msg.id.priority = NMEA2000_PRIORITY_INFO;
+	msg.dlc = sizeof(struct nmea2000_env_param);
+	msg.data = &nmea2000_data[0]; 
+	data->sid  = sid; 
+	data->tsource = ENV_TSOURCE_OUTSIDE;
+	data->hsource = ENV_HSOURCE_OUTSIDE;
+	data->temp = temp;
+	data->hum = hum / 4;
+	data->press = 0xffff;
+	if (! nmea2000_send_single_frame(&msg))
+		printf("send NMEA2000_BATTERY_STATUS failed\n");
+}
 
 void
 user_handle_iso_request(unsigned long pgn)
 {
 	printf("ISO_REQUEST for %ld from %d\n", pgn, rid.saddr);
-#if 0
 	switch(pgn) {
-	case PRIVATE_COMPASS_OFFSET:
-		send_private_compass_offset(rid.saddr);
-		break;
-	case NMEA2000_RATEOFTURN:
-		send_nmea2000_rateofturn();
-		break;
-	case NMEA2000_ATTITUDE:
-		send_nmea2000_attitude();
+	case NMEA2000_ENV_PARAM:
+		send_env_param();
 		break;
 	}
-#endif
 }
 
 void
@@ -140,11 +153,64 @@ PUTCHAR(c)
 	}
 }
 
+static void
+sth20_read(void) {
+	switch(i2c_status) {
+	case READ_TEMP:
+		if (i2c_readvalue(STH20_ADDR, &i2cval) != 0) {
+			temp = (int32_t)i2cval * 17572 / 65536
+			    + 22630 /* - 4685 + 27315 */;
+			printf("STH20 temp 0x%x %ld\n", i2cval, temp);
+		} else {
+			printf("READ_TEMP failed\n");
+		}
+		i2c_status = SEND_HUM;
+		break;
+	case READ_HUM:
+		if (i2c_readvalue(STH20_ADDR, &i2cval) != 0) {
+			float tmp = i2cval;
+			tmp = tmp * 125000.0 / 65536.0 - 6000.0;
+			hum = tmp;
+			printf("STH20 hum 0x%x %lu\n", i2cval, hum);
+		} else {
+			printf("READ_HUM failed\n");
+		}
+		i2c_status = SEND_TEMP;
+		send_env_param();
+		break;
+	}
+}
+
+static void
+sth20_send(void)
+{
+	switch(i2c_status) {
+	case SEND_TEMP:
+		if (counter_sth20 == 0) {
+			if (i2c_writecmd(STH20_ADDR, STH20_READT) != 0) {
+				i2c_status = READ_TEMP;
+				counter_sth20 = 9; /* on measure every 10s */
+			} else {
+				printf("STH20_READT failed\n");
+			}
+		} else {
+			counter_sth20--;
+		}
+		break;
+	case SEND_HUM:
+		if (i2c_writecmd(STH20_ADDR, STH20_READH) != 0) {
+			i2c_status = READ_HUM;
+		} else {
+			printf("STH20_READH failed\n");
+		}
+		break;
+	}
+}
+
 void
 main(void) __naked
 {
 	char c;
-	uint16_t i2cval;
 	static unsigned int poll_count;
 
 	sid = 0;
@@ -246,6 +312,7 @@ main(void) __naked
 		printf("sth20 reg 0x%x\n", i2cval);
 	}
 	i2c_status = SEND_TEMP;
+	counter_sth20 = 0;
 
 again:
 	printf("hello user_id 0x%lx devid 0x%lx\n", nmea2000_user_id, devid);
@@ -267,55 +334,14 @@ again:
 
 		if (softintrs.bits.int_10hz) {
 			softintrs.bits.int_10hz = 0;
-			switch(i2c_status) {
-			case READ_TEMP:
-				if (i2c_readvalue(STH20_ADDR, &i2cval) != 0) {
-					temp = (int32_t)i2cval * 17572 / 65536
-					    + 22630 /* - 4685 + 27315 */;
-					printf("STH20 temp 0x%x %ld\n",
-					    i2cval, temp);
-				} else {
-					printf("READ_TEMP failed\n");
-				}
-				i2c_status = SEND_HUM;
-				break;
-			case READ_HUM:
-				if (i2c_readvalue(STH20_ADDR, &i2cval) != 0) {
-					float tmp = i2cval;
-					tmp = tmp * 125000.0 / 65536.0 - 6000.0;
-					hum = tmp;
-					printf("STH20 hum 0x%x %lu\n",
-					    i2cval, hum);
-				} else {
-					printf("READ_HUM failed\n");
-				}
-				i2c_status = SEND_TEMP;
-				break;
-			}
+			sth20_read();
 			counter_1hz--;
 			if (counter_1hz == 0) {
 				sid++;
 				if (sid == 0xfe)
 					sid = 0;
 				counter_1hz = 10;
-				switch(i2c_status) {
-				case SEND_TEMP:
-					if (i2c_writecmd(STH20_ADDR,
-					    STH20_READT) != 0) {
-						i2c_status = READ_TEMP;
-					} else {
-						printf("STH20_READT failed\n");
-					}
-					break;
-				case SEND_HUM:
-					if (i2c_writecmd(STH20_ADDR,
-					    STH20_READH) != 0) {
-						i2c_status = READ_HUM;
-					} else {
-						printf("STH20_READH failed\n");
-					}
-					break;
-				}
+				sth20_send();
 			}
 		}
 
