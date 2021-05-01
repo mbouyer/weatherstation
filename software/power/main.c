@@ -89,9 +89,6 @@ static char counter_1hz;
 static volatile union softintrs {
 	struct softintrs_bits {
 		char int_10hz : 1;	/* 0.1s timer */
-		char int_att  : 1;	/* got new attitude message */
-		char int_rot  : 1;	/* got new rate of turn message */
-		char int_ledo : 1;	/* toggle LED in timer intr handler */
 	} bits;
 	char byte;
 } softintrs;
