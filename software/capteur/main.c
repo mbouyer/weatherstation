@@ -54,6 +54,7 @@ static struct nmea2000_msg msg;
 static unsigned char nmea2000_data[NMEA2000_DATA_LENGTH];
 
 unsigned int timer0_read(void);
+unsigned int timer1_read(void);
 #pragma callee_saves timer0_read
 
 #define TIMER0_5MS 48
@@ -90,6 +91,8 @@ int32_t temp; /* degK * 100 */
 uint32_t hum; /* %RH * 1000 */
 static char counter_sth20;
 static uint16_t i2cval;
+
+static uint16_t raincount;
 
 static void
 send_env_param(void)
@@ -164,6 +167,7 @@ sth20_read(void) {
 		} else {
 			printf("READ_TEMP failed\n");
 		}
+		raincount = timer1_read();
 		i2c_status = SEND_HUM;
 		break;
 	case READ_HUM:
@@ -171,7 +175,7 @@ sth20_read(void) {
 			float tmp = i2cval;
 			tmp = tmp * 125000.0 / 65536.0 - 6000.0;
 			hum = tmp;
-			printf("STH20 hum 0x%x %lu\n", i2cval, hum);
+			printf("STH20 hum 0x%x %lu rain %d\n", i2cval, hum, raincount);
 		} else {
 			printf("READ_HUM failed\n");
 		}
@@ -189,12 +193,10 @@ sth20_send(void)
 		if (counter_sth20 == 0) {
 			if (i2c_writecmd(STH20_ADDR, STH20_READT) != 0) {
 				i2c_status = READ_TEMP;
-				counter_sth20 = 9; /* on measure every 10s */
+				counter_sth20 = 10; /* one measure every 10s */
 			} else {
 				printf("STH20_READT failed\n");
 			}
-		} else {
-			counter_sth20--;
 		}
 		break;
 	case SEND_HUM:
@@ -205,6 +207,9 @@ sth20_send(void)
 		}
 		break;
 	}
+	if (counter_sth20 != 0) 
+		counter_sth20--;
+
 }
 
 void
@@ -314,6 +319,14 @@ main(void) __naked
 	i2c_status = SEND_TEMP;
 	counter_sth20 = 0;
 
+	/* setup timer1 */
+	LATAbits.LATA5 = 1;
+	ANCON0bits.ANSEL4 = 0;
+	TMR1H = 0;
+	TMR1L = 0;
+	T1GCON = 0;
+	T1CON = 0x82; /* clock on T1CKI, RD16 */
+	T1CONbits.TMR1ON = 1;
 again:
 	printf("hello user_id 0x%lx devid 0x%lx\n", nmea2000_user_id, devid);
 	while (1) {
@@ -373,6 +386,17 @@ timer0_read() __naked
 	__asm
 	movf    _TMR0L, w
 	movff   _TMR0H, _PRODL
+	return
+	__endasm;
+}
+
+unsigned int
+timer1_read() __naked
+{
+	/* return TMR1L | (TMR1H << 8), reading TMR1L first */
+	__asm
+	movf    _TMR1L, w
+	movff   _TMR1H, _PRODL
 	return
 	__endasm;
 }
