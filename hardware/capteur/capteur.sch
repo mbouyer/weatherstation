@@ -1049,4 +1049,8 @@ Wire Wire Line
 Wire Wire Line
 	5400 5150 5400 5250
 Connection ~ 5400 5150
+Text Label 5450 4950 0    50   ~ 0
+SCL
+Text Label 5450 5050 0    50   ~ 0
+SDA
 $EndSCHEMATC
