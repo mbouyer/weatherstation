@@ -98,6 +98,15 @@ static uint16_t batt_v; /* Volts * 100 */
 static int16_t batt_i; /* mA * 10 */
 static uint16_t batt_temp; /* K * 100 */
 
+#define BATTV_CUTOFF	1100 /* 11v */
+#define BATTV_MIN	900
+#define BATTV_MIN_BULK	1240
+#define BATTV_STOP_BULK	1400
+#define BATTI_STOP_BULK	4500 /* 450mA */
+#define BATTI_STOP_ABS	1000
+#define BATT_BULK_TIME	14400 /* 3h */
+
+
 static uint16_t a2d_acc;
 
 static char ina226_ready;
@@ -354,7 +363,7 @@ read_battery_data(void)
 	if (power_status == OFF) {
 		/* running on battery */
 		charger_disable();
-		if (batt_v < 1100) {
+		if (batt_v < BATTV_CUTOFF) {
 			/*
 			 * switch off to protect battery
 			 * this is likely going to kill us
@@ -381,7 +390,7 @@ read_battery_data(void)
 	case CHARGER_STATE_NOCHRG:
 	case CHARGER_STATE_DIS:
 		/* recover from fault, or power up */
-		if (batt_v < 900) {
+		if (batt_v < BATTV_MIN) {
 			/* battery too low, don't try */
 			charger_disable();
 			LEDBATT_R = 1;
@@ -391,7 +400,7 @@ read_battery_data(void)
 		LEDBATT_R = 0;
 		LEDBATT_G = 1;
 		BATT_ON = 1;
-		if (batt_v < 1240) {
+		if (batt_v < BATTV_MIN_BULK) {
 			CHRG_BULK = 1;
 			charger_status = CHARGER_STATE_BULK;
 			time_on_bulk = 0;
@@ -408,11 +417,11 @@ read_battery_data(void)
 	case CHARGER_STATE_BULK:	
 		time_on_bulk++;
 		LEDBATT_G = LEDBATT_G ^ 1;
-		if (time_on_bulk > 14400) {
+		if (time_on_bulk > BATT_BULK_TIME) {
 			charger_status = CHARGER_STATE_FLOAT;
 			CHRG_BULK = 0;
 		}
-		if (batt_v > 1400 && batt_i < 4500) {
+		if (batt_v > BATTV_STOP_BULK && batt_i < BATTI_STOP_BULK) {
 			charger_status = CHARGER_STATE_ABS;
 			time_on_abs = 0;
 		}
@@ -421,16 +430,12 @@ read_battery_data(void)
 		time_on_abs++;
 		LEDBATT_G = LEDBATT_G ^ 1;
 		if (time_on_abs > time_on_bulk ||
-		    batt_i < 1000) {
+		    batt_i < BATTI_STOP_ABS) {
 			charger_status = CHARGER_STATE_FLOAT;
 			CHRG_BULK = 0;
 		}
 		return;
-	default:
-		charger_status = CHARGER_STATE_FAULT;
-		CHRG_BULK = 0;
 	}
-	return;
 fail:
 	charger_status = CHARGER_STATE_FAULT;
 	LEDBATT_G = 0;
