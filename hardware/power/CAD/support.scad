@@ -35,8 +35,8 @@ module support() {
 
 difference() {
 	support();
-	translate([-7+2+1,-23.5,7 + 5]) rotate([0,-90,0]) cylinder(d = d_ins, h = 11 + 2);
-	translate([-7+2+1,-23.5,7 + 87]) rotate([0,-90,0]) cylinder(d = d_ins, h = 11 + 2);
-	translate([-7+2+1,64.5,7 + 5]) rotate([0,-90,0]) cylinder(d = d_ins, h = 11 + 2);
-	translate([-7+2+1,64.5,7 + 87]) rotate([0,-90,0]) cylinder(d = d_ins, h = 11 + 2);
+	translate([-7+2+1,-23.5,7 + 6]) rotate([0,-90,0]) cylinder(d = d_ins, h = 11 + 2, $fa = fa_small, $fs = fs_small);
+	translate([-7+2+1,-23.5,7 + 88]) rotate([0,-90,0]) cylinder(d = d_ins, h = 11 + 2, $fa = fa_small, $fs = fs_small);
+	translate([-7+2+1,64.5,7 + 6]) rotate([0,-90,0]) cylinder(d = d_ins, h = 11 + 2, $fa = fa_small, $fs = fs_small);
+	translate([-7+2+1,64.5,7 + 88]) rotate([0,-90,0]) cylinder(d = d_ins, h = 11 + 2, $fa = fa_small, $fs = fs_small);
 }
