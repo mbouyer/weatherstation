@@ -12,8 +12,8 @@ module base() {
 	translate([0,0,2]) {
 		linear_extrude(height = 7 - 4)
 		    import("base.dxf", layer="0");
-		translate([-20, 79, 7 - 4]) cube([6, 2, 2], center=true);
-		translate([-20, -79, 7 - 4]) cube([6, 2, 2], center=true);
+		translate([-20, 79, 7 - 4 + 4/2]) cube([6, 2, 4], center=true);
+		translate([-20, -79, 7 - 4 + 4/2]) cube([6, 2, 4], center=true);
 	};
 }
 
