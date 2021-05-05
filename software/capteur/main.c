@@ -66,6 +66,7 @@ static char counter_1hz;
 static volatile union softintrs {
 	struct softintrs_bits {
 		char int_10hz : 1;	/* 0.1s timer */
+		char anemo_rx : 1;	/* NMEA string ready */
 	} bits;
 	char byte;
 } softintrs;
@@ -93,6 +94,13 @@ static char counter_sth20;
 static uint16_t i2cval;
 
 static uint16_t raincount;
+
+#define ANEMO_BUFSIZE 128
+static char anemo_rxbuf1[ANEMO_BUFSIZE];
+static char anemo_rxbuf2[ANEMO_BUFSIZE];
+static unsigned char anemo_rxbufi;
+static unsigned char anemo_rxbufs;
+static unsigned char anemo_rxbufs_ready;
 
 static void
 send_env_param(void)
@@ -225,6 +233,9 @@ main(void) __naked
 	counter_1hz = 10;
 	i2c_status = IDLE;
 
+	anemo_rxbufi = 0;
+	anemo_rxbufs = 0;
+
 	devid = 0;
 	__asm
 	movlw UPPER __DEVID1
@@ -271,6 +282,12 @@ main(void) __naked
 
 	USART_INIT(0);
 	I2C_INIT;
+
+	/* configure UART1 (anemo) for 4800Bps at 10Mhz */
+	SPBRG1 = 31;
+	TXSTA1 = 0x00; /* disable TX */
+	BAUDCON1 = 0x10; /* TX1 low-level idle state */
+	RCSTA1 = 0x10; /* enable RX */
 
 	INTCONbits.GIE_GIEH=1;  /* enable high-priority interrupts */   
 	INTCONbits.PEIE_GIEL=1; /* enable low-priority interrrupts */   
@@ -327,6 +344,10 @@ main(void) __naked
 	T1GCON = 0;
 	T1CON = 0x82; /* clock on T1CKI, RD16 */
 	T1CONbits.TMR1ON = 1;
+
+	/* enable anemo RX */
+	RCSTA1bits.SPEN = 1;
+	PIE1bits.RC1IE = 1;
 again:
 	printf("hello user_id 0x%lx devid 0x%lx\n", nmea2000_user_id, devid);
 	while (1) {
@@ -356,6 +377,15 @@ again:
 				counter_1hz = 10;
 				sth20_send();
 			}
+		}
+		if (softintrs.bits.anemo_rx) {
+			if (anemo_rxbufs_ready == 0)
+				printf("anemo1 %s\n", anemo_rxbuf1);
+			else 
+				printf("anemo2 %s\n", anemo_rxbuf2);
+			anemo_rxbufi = 0;
+			softintrs.bits.anemo_rx = 0;
+			PIE1bits.RC1IE = 1;
 		}
 
 		if (RCREG2 == 'r')
@@ -464,7 +494,40 @@ void irqh_timer2(void) __naked
 
 void _irql (void) __interrupt 2 /* low priority */
 {
+	unsigned char c;
+
 	USART_INTR;
+
+	if (PIR1bits.RC1IF && PIE1bits.RC1IE) {
+		c = RCREG1;
+		if (c == 0x0a) {
+			; /* ignore */
+		} else if (c == 0x0d) {
+			anemo_rxbufs_ready = anemo_rxbufs;
+			if (anemo_rxbufs == 0) {
+				anemo_rxbuf1[anemo_rxbufi] = 0;
+				anemo_rxbufs = 1;
+			} else {
+				anemo_rxbuf2[anemo_rxbufi] = 0;
+				anemo_rxbufs = 0;
+			}
+			softintrs.bits.anemo_rx = 1;
+		} else {
+			if (anemo_rxbufi < (ANEMO_BUFSIZE - 1)) {
+				if (anemo_rxbufs == 0) {
+					anemo_rxbuf1[anemo_rxbufi] = c;
+				} else {
+					anemo_rxbuf2[anemo_rxbufi] = c;
+				}
+				anemo_rxbufi++;
+			}
+		}
+		if (RCSTA1bits.OERR) { 
+			RCSTA1bits.CREN = 0;
+			RCSTA1bits.CREN = 1; 
+		}
+	}
+
 	if (PIR5 != 0) {
 		nmea2000_intr();
 	}
