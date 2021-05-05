@@ -377,7 +377,8 @@ read_battery_data(void)
 	}
 
 	time_on_batt = 0;
-	if (batt_temp > 30800) { /* 35 degC */
+	if (batt_temp > 30800U) { /* 35 degC */
+		printf("overtemp\n");
 		charger_disable();
 		LEDBATT_R = 1;
 		BATT_ON = 0;
@@ -437,6 +438,7 @@ read_battery_data(void)
 		return;
 	}
 fail:
+	printf("charger fail status %d\n", charger_status);
 	charger_status = CHARGER_STATE_FAULT;
 	LEDBATT_G = 0;
 	LEDBATT_R = 0;
