@@ -1363,13 +1363,14 @@ Connection ~ 6650 1550
 Wire Wire Line
 	6650 1550 6800 1550
 $Comp
-L power-rescue:Thermistor_NTC-Device TH1
+L Device:Thermistor_NTC TH1
 U 1 1 6094600D
 P 2600 3550
 F 0 "TH1" H 2697 3596 50  0000 L CNN
 F 1 "NTC10K" H 2697 3505 50  0000 L CNN
 F 2 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" H 2600 3600 50  0001 C CNN
 F 3 "~" H 2600 3600 50  0001 C CNN
+F 4 "ND06P00103K" H 2600 3550 50  0001 C CNN "P/N"
 	1    2600 3550
 	1    0    0    -1  
 $EndComp
