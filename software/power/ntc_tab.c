@@ -26,7 +26,7 @@
  */
 
 /*
- * thermistor constants array
+ * thermistor constants array for ND06P00103K
  * It has to be in its own file because of sdcc bug 
  */
 
@@ -34,72 +34,72 @@
 #include "ntc_tab.h"
 const struct temp_val const temps[] = {
 	{
-		.temp = 33300,
-		.val = 3308, /* R = 2374 Ohm */
+		.temp = 33315,
+		.val = 3340, /* R = 2261 Ohm */
 	},
 	{
-		.temp = 32800,
-		.val = 3184, /* R = 2862 Ohm */
+		.temp = 32815,
+		.val = 3214, /* R = 2742 Ohm */
 	},
 	{
-		.temp = 32300,
-		.val = 3040, /* R = 3469 Ohm */
+		.temp = 32315,
+		.val = 3069, /* R = 3345 Ohm */
 	},
 	{
-		.temp = 31800,
-		.val = 2876, /* R = 4231 Ohm */
+		.temp = 31815,
+		.val = 2903, /* R = 4108 Ohm */
 	},
 	{
-		.temp = 31300,
-		.val = 2696, /* R = 5192 Ohm */
+		.temp = 31315,
+		.val = 2716, /* R = 5076 Ohm */
 	},
 	{
-		.temp = 30800,
-		.val = 2492, /* R = 6414 Ohm */
+		.temp = 30815,
+		.val = 2510, /* R = 6317 Ohm */
 	},
 	{
-		.temp = 30300,
-		.val = 2276, /* R = 7980 Ohm */
+		.temp = 30315,
+		.val = 2285, /* R = 7918 Ohm */
 	},
 	{
-		.temp = 29800,
+		.temp = 29815,
 		.val = 2048, /* R = 10000 Ohm */
 	},
 	{
-		.temp = 29300,
-		.val = 1808, /* R = 12629 Ohm */
+		.temp = 29315,
+		.val = 1802, /* R = 12730 Ohm */
 	},
 	{
-		.temp = 28800,
-		.val = 1568, /* R = 16079 Ohm */
+		.temp = 28815,
+		.val = 1554, /* R = 16343 Ohm */
 	},
 	{
-		.temp = 28300,
-		.val = 1336, /* R = 20646 Ohm */
+		.temp = 28315,
+		.val = 1314, /* R = 21166 Ohm */
 	},
 	{
-		.temp = 27800,
-		.val = 1112, /* R = 26750 Ohm */
+		.temp = 27815,
+		.val = 1087, /* R = 27669 Ohm */
 	},
 	{
-		.temp = 27300,
-		.val = 908, /* R = 34989 Ohm */
+		.temp = 27315,
+		.val = 880, /* R = 36526 Ohm */
 	},
 	{
-		.temp = 26800,
-		.val = 728, /* R = 46227 Ohm */
+		.temp = 26815,
+		.val = 697, /* R = 48720 Ohm */
 	},
 	{
-		.temp = 26300,
-		.val = 568, /* R = 61723 Ohm */
+		.temp = 26315,
+		.val = 541, /* R = 65701 Ohm */
 	},
 	{
-		.temp = 25800,
-		.val = 436, /* R = 83343 Ohm */
+		.temp = 25815,
+		.val = 411, /* R = 89633 Ohm */
 	},
 	{
-		.temp = 25300,
-		.val = 328, /* R = 113880 Ohm */
+		.temp = 25315,
+		.val = 306, /* R = 123791 Ohm */
 	},
 	{
 		.temp = 0,
