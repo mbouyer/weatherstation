@@ -126,13 +126,28 @@ send_env_param(void)
 }
 
 static void
+send_rain_counter(void)
+{
+	struct private_rain_counter *data = (void *)&nmea2000_data[0];
+
+	PGN2ID(PRIVATE_RAIN_COUNTER, msg.id);
+	msg.id.priority = NMEA2000_PRIORITY_INFO;
+	msg.dlc = sizeof(struct private_rain_counter);
+	msg.data = &nmea2000_data[0]; 
+	data->sid  = sid;
+	data->count = raincount;
+	if (! nmea2000_send_single_frame(&msg))
+		printf("send PRIVATE_RAIN_COUNTER failed\n");
+}
+
+static void
 send_wind_data(void)
 {
 	struct nmea2000_wind_data *data = (void *)&nmea2000_data[0];
 
 	PGN2ID(NMEA2000_WIND_DATA, msg.id);
 	msg.id.priority = NMEA2000_PRIORITY_INFO;
-	msg.dlc = sizeof(struct nmea2000_env_param);
+	msg.dlc = sizeof(struct nmea2000_wind_data);
 	msg.data = &nmea2000_data[0]; 
 	data->sid  = sid; 
 	if (wind_ok) {
@@ -158,6 +173,9 @@ user_handle_iso_request(unsigned long pgn)
 		break;
 	case NMEA2000_WIND_DATA:
 		send_wind_data();
+		break;
+	case PRIVATE_RAIN_COUNTER:
+		send_rain_counter();
 		break;
 	}
 }
@@ -219,6 +237,10 @@ sth20_read(void) {
 		}
 		i2c_status = SEND_TEMP;
 		send_env_param();
+		send_rain_counter();
+		sid++;
+		if (sid == 0xfe)
+			sid = 0;
 		break;
 	}
 }
@@ -506,9 +528,6 @@ again:
 			counter_1hz--;
 			if (counter_1hz == 0) {
 				counter_1hz = 10;
-				sid++;
-				if (sid == 0xfe)
-					sid = 0;
 				sth20_send();
 			}
 		}
@@ -516,10 +535,10 @@ again:
 			parse_anemo_rx();
 			softintrs.bits.anemo_rx = 0;
 			if (wind_ok) {
+				send_wind_data();
 				sid++;
 				if (sid == 0xfe)
 					sid = 0;
-				send_wind_data();
 			}
 		}
 
