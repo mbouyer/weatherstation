@@ -102,6 +102,10 @@ static unsigned char anemo_rxbufi;
 static unsigned char anemo_rxbufs;
 static unsigned char anemo_rxbufs_ready;
 
+static uint16_t wind_speed; /* kn * 10 */
+static uint16_t wind_angle; /* deg * 10 */
+static unsigned char wind_ok;
+
 static void
 send_env_param(void)
 {
@@ -118,7 +122,30 @@ send_env_param(void)
 	data->hum = hum / 4;
 	data->press = 0xffff;
 	if (! nmea2000_send_single_frame(&msg))
-		printf("send NMEA2000_BATTERY_STATUS failed\n");
+		printf("send NMEA2000_ENV_PARAM failed\n");
+}
+
+static void
+send_wind_data(void)
+{
+	struct nmea2000_wind_data *data = (void *)&nmea2000_data[0];
+
+	PGN2ID(NMEA2000_WIND_DATA, msg.id);
+	msg.id.priority = NMEA2000_PRIORITY_INFO;
+	msg.dlc = sizeof(struct nmea2000_env_param);
+	msg.data = &nmea2000_data[0]; 
+	data->sid  = sid; 
+	if (wind_ok) {
+		data->speed = (unsigned long)wind_speed * 1852UL / 360UL;
+			/* (wind_speed / 10) * (1852 / 3600) * 100 */
+		data->dir = deg2urad(wind_angle / 10);
+	} else {
+		data->speed = 0xffff;
+		data->dir = 0xffff;
+	}
+	data->ref = WIND_REF_TRUE_N;
+	if (! nmea2000_send_single_frame(&msg))
+		printf("send NMEA2000_WIND_DATA failed\n");
 }
 
 void
@@ -128,6 +155,9 @@ user_handle_iso_request(unsigned long pgn)
 	switch(pgn) {
 	case NMEA2000_ENV_PARAM:
 		send_env_param();
+		break;
+	case NMEA2000_WIND_DATA:
+		send_wind_data();
 		break;
 	}
 }
@@ -220,6 +250,109 @@ sth20_send(void)
 
 }
 
+static void
+parse_anemo_rx(void)
+{
+	static char *rxbuf;
+	static unsigned char i;
+	unsigned char dot;
+
+	i = 0;
+	if (anemo_rxbufs_ready == 0) {
+		rxbuf = anemo_rxbuf1;
+		printf("anemo1 %s\n", rxbuf);
+	} else {
+		rxbuf = anemo_rxbuf2;
+		printf("anemo2 %s\n", rxbuf);
+	}
+	if (*rxbuf != '$')
+		return;
+	rxbuf++; i++;
+
+	for (; i < 10 ; i++, rxbuf++) {
+		/* we should have the NMEA ID 'MWV' in the first few chars */
+		if (*rxbuf == 0)
+			return;
+		if (rxbuf[0] == 'M' && rxbuf[1] == 'W' && rxbuf[2] == 'V') {
+			rxbuf += 3;
+			i += 3;
+			break;
+		}
+		rxbuf++; i++;
+	}
+	printf("found MWV\n");
+	if (*rxbuf != ',')
+		return;
+	rxbuf++; i++;
+	dot = 0;
+	wind_angle = 0;
+	wind_ok = 0;
+	while(*rxbuf != ',') {
+		if (*rxbuf == 0 || i >= ANEMO_BUFSIZE)
+			return;
+
+		if (*rxbuf == '.') {
+			rxbuf++; i++;
+			dot++;
+			continue;
+		}
+		if (*rxbuf < '0' || *rxbuf > '9')
+			return;
+		wind_angle = wind_angle * 10;
+		wind_angle += *rxbuf - '0';
+		rxbuf++; i++;
+	}
+	if (dot == 0)
+		wind_angle = wind_angle * 10;
+	printf("wangle %d\n", wind_angle);
+
+	rxbuf++; i++; /* skip , */
+	rxbuf++; i++; /* skip R/T */
+	rxbuf++; i++; /* skip , */
+
+	wind_speed = 0;
+	dot = 0;
+	while(*rxbuf != ',') {
+		if (*rxbuf == 0 || i >= ANEMO_BUFSIZE)
+			return;
+
+		if (*rxbuf == '.') {
+			rxbuf++; i++;
+			dot++;
+			continue;
+		}
+		if (*rxbuf < '0' || *rxbuf > '9')
+			return;
+		wind_speed = wind_speed * 10;
+		wind_speed += *rxbuf - '0';
+		rxbuf++; i++;
+	}
+	if (dot == 0)
+		wind_speed = wind_speed * 10;
+	printf("wspeed %d\n", wind_speed);
+
+	rxbuf++; i++; /* skip , */
+	switch(*rxbuf) {
+		case 'N': /* knots */
+			break;
+		case 'M': /* m/s */
+			wind_speed =
+			    (unsigned long)wind_speed * 3600UL / 1852UL; 
+			break;
+		case 'K': /* km/h */
+			wind_speed =
+			    (unsigned long)wind_speed * 1000UL / 1852UL; 
+			break;
+		default:
+			return;
+	}
+	rxbuf++; i++; /* skip N/M/K */
+	rxbuf++; i++; /* skip , */
+	if (*rxbuf == 'A')
+		wind_ok = 1;
+	printf("wok %d\n", wind_ok);
+}
+
 void
 main(void) __naked
 {
@@ -235,6 +368,7 @@ main(void) __naked
 
 	anemo_rxbufi = 0;
 	anemo_rxbufs = 0;
+	wind_ok = 0;
 
 	devid = 0;
 	__asm
@@ -371,21 +505,22 @@ again:
 			sth20_read();
 			counter_1hz--;
 			if (counter_1hz == 0) {
+				counter_1hz = 10;
 				sid++;
 				if (sid == 0xfe)
 					sid = 0;
-				counter_1hz = 10;
 				sth20_send();
 			}
 		}
 		if (softintrs.bits.anemo_rx) {
-			if (anemo_rxbufs_ready == 0)
-				printf("anemo1 %s\n", anemo_rxbuf1);
-			else 
-				printf("anemo2 %s\n", anemo_rxbuf2);
-			anemo_rxbufi = 0;
+			parse_anemo_rx();
 			softintrs.bits.anemo_rx = 0;
-			PIE1bits.RC1IE = 1;
+			if (wind_ok) {
+				sid++;
+				if (sid == 0xfe)
+					sid = 0;
+				send_wind_data();
+			}
 		}
 
 		if (RCREG2 == 'r')
@@ -512,6 +647,7 @@ void _irql (void) __interrupt 2 /* low priority */
 				anemo_rxbufs = 0;
 			}
 			softintrs.bits.anemo_rx = 1;
+			anemo_rxbufi = 0;
 		} else {
 			if (anemo_rxbufi < (ANEMO_BUFSIZE - 1)) {
 				if (anemo_rxbufs == 0) {
