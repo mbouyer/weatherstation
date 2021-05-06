@@ -93,6 +93,72 @@ clear_leds(void) {
 	LATC |= 0xe7; /* E, SE, S, SW, W, NW */
 }
 
+static void
+set_leds(unsigned char v)
+{
+	clear_leds();
+	switch(v) {
+	case 0:
+		LED_N = 0;
+		break;
+	case 1:
+		LED_N = 0;
+		LED_NE = 0;
+		break;
+	case 2:
+		LED_NE = 0;
+		break;
+	case 3:
+		LED_NE = 0;
+		LED_E = 0;
+		break;
+	case 4:
+		LED_E = 0;
+		break;
+	case 5:
+		LED_E = 0;
+		LED_SE = 0;
+		break;
+	case 6:
+		LED_SE = 0;
+		break;
+	case 7:
+		LED_SE = 0;
+		LED_S = 0;
+		break;
+	case 8:
+		LED_S = 0;
+		break;
+	case 9:
+		LED_S = 0;
+		LED_SW = 0;
+		break;
+	case 10:
+		LED_SW = 0;
+		break;
+	case 11:
+		LED_SW = 0;
+		LED_W = 0;
+		break;
+	case 12:
+		LED_W = 0;
+		break;
+	case 13:
+		LED_W = 0;
+		LED_NW = 0;
+		break;
+	case 14:
+		LED_NW = 0;
+		break;
+	case 15:
+		LED_NW = 0;
+		LED_N = 0;
+		break;
+	default:
+		printf("invalid LED value %d\n", v);
+	}
+}
+
 static unsigned char i2cdata[4];
 static inline void
 write_dac(unsigned char v) {
@@ -124,26 +190,39 @@ user_handle_iso_request(unsigned long pgn)
 void
 user_receive()
 {
-#if 0
 	unsigned long pgn;
+	float v;
+	unsigned char c;
 
 	pgn = ((unsigned long)rid.page << 16) | ((unsigned long)rid.iso_pg << 8);
 	if (rid.iso_pg > 239)
 		pgn |= rid.daddr;
 
 	switch(pgn) {
-	case PRIVATE_COMMAND_STATUS:
+	case NMEA2000_WIND_DATA:
 	{
-		struct private_command_status *command_status = (void *)rdata;
-		last_command_data = timer0_read();
-		nmea2000_command_address = rid.saddr;
-		command_received_heading = command_status->heading;
-		received_auto_mode = command_status->auto_mode;
-		received_param_slot = command_status->params_slot;
+		struct nmea2000_wind_data *wind_data = (void *)rdata;
+		wind_timeout = WIND_TIMEOUT;
+		/*
+		 * compte dac output:
+		 * 50kn  = 25.722m/s = 2.04v = 255 dac
+		 */
+		v = (float)wind_data->speed / 2572.2 * 255.0;
+		if (v > 255)
+			v = 255;
+		c = (unsigned char)v;
+		printf("wind %d dac %d", wind_data->speed, c);
+		write_dac(c);
+		/*
+		 * compute leds, with appropriate rounding
+		 */
+		v = (float)wind_data->dir / 62831.8 * 16.0;
+		c = (unsigned char)(v + 0.5);
+		printf(" dir %u led %d\n", wind_data->dir, c);
+		set_leds(c & 0xf);
 		break;
 	}
 	}
-#endif
 }
 
 PUTCHAR(c)
@@ -308,33 +387,8 @@ i2c_retry:
 		};
 		if (softintrs.bits.int_10hz) {
 			softintrs.bits.int_10hz = 0;
-			clear_leds();
-			switch((c >> 1) & 0x7 ) {
-			case 0:
-				LED_N = 0;
-				break;
-			case 1:
-				LED_NE = 0;
-				break;
-			case 2:
-				LED_E = 0;
-				break;
-			case 3:
-				LED_SE = 0;
-				break;
-			case 4:
-				LED_S = 0;
-				break;
-			case 5:
-				LED_SW = 0;
-				break;
-			case 6:
-				LED_W = 0;
-				break;
-			case 7:
-				LED_NW = 0;
-				break;
-			}
+
+			set_leds(c >> 1);
 			write_dac(c * 8 + 7 /* (c + 1) * 256 / 32 - 1 */);
 			c++;
 		}
