@@ -56,15 +56,51 @@ static unsigned char nmea2000_data[NMEA2000_DATA_LENGTH];
 unsigned int timer0_read(void);
 #pragma callee_saves timer0_read
 
+#define TIMER0_5MS 48
+
+#define CLRWDT __asm__("clrwdt")
+
+static char counter_10hz;
+static char counter_1hz;
+static volatile union softintrs {
+	struct softintrs_bits {
+		char int_10hz : 1;	/* 0.1s timer */
+	} bits;
+	char byte;
+} softintrs;
+
+static unsigned char wind_timeout;
+#define WIND_TIMEOUT 5 /* seconds */
+
 #define DAC_ADDR 0x61
 #define DAC_WRITE_DAC		0x00
 #define DAC_WRITE_VOL		0x02
 #define DAC_WRITE_ALL		0x03
 #define DAC_WRITE_CONF_VOL	0x04
 
-#define TIMER0_5MS 48
+#define LED_N	LATBbits.LATB1
+#define LED_NE	LATBbits.LATB0
+#define LED_E	LATCbits.LATC7
+#define LED_SE	LATCbits.LATC6
+#define LED_S	LATCbits.LATC5
+#define LED_SW	LATCbits.LATC2
+#define LED_W	LATCbits.LATC1
+#define LED_NW	LATCbits.LATC0
 
-#define CLRWDT __asm__("clrwdt")
+static inline void
+clear_leds(void) {
+	LED_N = LED_NE = 1;
+	LATC |= 0xe7; /* E, SE, S, SW, W, NW */
+}
+
+static unsigned char i2cdata[4];
+static inline void
+write_dac(unsigned char v) {
+	i2cdata[0] = (DAC_WRITE_DAC << 5);
+	i2cdata[1] = v;
+	i2c_write(DAC_ADDR, &i2cdata[0], 2);
+}
+	
 
 void
 user_handle_iso_request(unsigned long pgn)
@@ -122,9 +158,18 @@ main(void) __naked
 {
 	char c;
 	static unsigned int poll_count;
-	static unsigned char i2cdata[4];
 
+	softintrs.byte = 0;
+	counter_10hz = 25;
+	counter_1hz = 10;
 	sid = 0;
+
+	/* setup LEDs */
+	clear_leds();
+	TRISB &= 0xfc;
+	TRISC &= 0x18;
+
+	LED_NW = LED_NE = 0; /* NW & NE on */
 
 	devid = 0;
 	__asm
@@ -161,11 +206,23 @@ main(void) __naked
 	INTCONbits.TMR0IE = 0; /* no interrupt */
 	T0CONbits.TMR0ON = 1;
 
+	/* configure timer2 for 250Hz interrupt */
+	PMD1bits.TMR2MD=0;
+	T2CON = 0x23; /* b00100011: postscaller 1/5, prescaler 1/16 */
+	PR2 = 125; /* 250hz output */
+	T2CONbits.TMR2ON = 1;
+	PIR1bits.TMR2IF = 0;
+	IPR1bits.TMR2IP = 1; /* high priority interrupt */
+	PIE1bits.TMR2IE = 1;
+
 	USART_INIT(0);
 	I2C_INIT;
 
 	INTCONbits.GIE_GIEH=1;  /* enable high-priority interrupts */   
 	INTCONbits.PEIE_GIEL=1; /* enable low-priority interrrupts */   
+
+	LED_NW = LED_NE = 1;
+	LED_N = LED_E = 0;
 
 	/* read user-id from config bits */
 	nmea2000_user_id = 0;
@@ -200,6 +257,8 @@ main(void) __naked
 		CLRWDT;
 	}
 
+	LED_N = LED_E = 1;
+	LED_NE = LED_SE = 0;
 	printf(", addr %d, id %ld\n", nmea2000_addr, nmea2000_user_id);
 
 i2c_retry:
@@ -224,11 +283,68 @@ i2c_retry:
 		i2c_write(DAC_ADDR, &i2cdata[0], 3);
 	}
 
-	/* test: output vref / 2 */
-	i2cdata[0] = (DAC_WRITE_DAC << 5);
-	i2cdata[1] = 128;
-	i2c_write(DAC_ADDR, &i2cdata[0], 2);
+	LED_NE = LED_SE = 1;
 
+	/*
+	 * auto test the display: rotate leds 2 times; slowly grow wind
+	 * indicator
+	 */
+	counter_10hz = 0;
+	softintrs.bits.int_10hz = 0;
+	for (c = 0; c < 32;) {
+		CLRWDT;
+		if (PIR5bits.RXBnIF) {
+			nmea2000_receive();
+		}
+
+		if (nmea2000_addr_status == ADDR_STATUS_CLAIMING) {
+			if ((timer0_read() - poll_count) > TIMER0_5MS) {
+				nmea2000_poll(5);
+				poll_count = timer0_read();
+			}
+			if (nmea2000_addr_status == ADDR_STATUS_OK) {
+				printf("new addr %d\n", nmea2000_addr);
+			}
+		};
+		if (softintrs.bits.int_10hz) {
+			softintrs.bits.int_10hz = 0;
+			clear_leds();
+			switch((c >> 1) & 0x7 ) {
+			case 0:
+				LED_N = 0;
+				break;
+			case 1:
+				LED_NE = 0;
+				break;
+			case 2:
+				LED_E = 0;
+				break;
+			case 3:
+				LED_SE = 0;
+				break;
+			case 4:
+				LED_S = 0;
+				break;
+			case 5:
+				LED_SW = 0;
+				break;
+			case 6:
+				LED_W = 0;
+				break;
+			case 7:
+				LED_NW = 0;
+				break;
+			}
+			write_dac(c * 8 + 7 /* (c + 1) * 256 / 32 - 1 */);
+			c++;
+		}
+		if (nmea2000_addr_status == ADDR_STATUS_OK) {
+			__asm
+			SLEEP
+			__endasm;
+		}
+	}
+	wind_timeout = WIND_TIMEOUT;
 again:
 	printf("hello user_id 0x%lx devid 0x%lx\n", nmea2000_user_id, devid);
 	while (1) {
@@ -246,6 +362,21 @@ again:
 				printf("new addr %d\n", nmea2000_addr);
 			}
 		};
+
+		if (softintrs.bits.int_10hz) {
+			softintrs.bits.int_10hz = 0;
+			counter_1hz--;
+			if (counter_1hz == 0) {
+				counter_1hz = 10;
+				if (wind_timeout == 0) {
+					clear_leds();
+					LED_E = LED_S = 0;
+					write_dac(0);
+				} else {
+					wind_timeout--;
+				}
+			}
+		}
 
 		if (RCREG2 == 'r')
 			break;
@@ -314,6 +445,27 @@ void _startup (void) __naked
 void _irqh (void) __naked __shadowregs __interrupt 1
 {
 	__asm
+	btfss _PIR1, 1
+	bra other
+	bcf   _PIR1, 1
+	goto _irqh_timer2
+other:
+	retfie 1
+	nop
+	__endasm ;
+}
+
+void irqh_timer2(void) __naked
+{
+	/*
+	 * no sdcc registers are automatically saved,
+	 * so we have to be carefull with C code !
+	 */
+	if (--counter_10hz == 0) {
+		counter_10hz = 25;
+		softintrs.bits.int_10hz = 1;
+	}			
+	__asm
 	retfie 1
 	nop
 	__endasm;
@@ -328,8 +480,4 @@ void _irql (void) __interrupt 2 /* low priority */
 	if (PIR5bits.RXBnIF)
 		PIE5bits.RXBnIE = 0; /* main loop will check */
 
-#if 0
-	if (PIR5 != 0)
-		PIE5 &= _PIE5_TXBnIE;
-#endif
 }
