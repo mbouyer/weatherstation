@@ -205,9 +205,9 @@ user_receive()
 		wind_timeout = WIND_TIMEOUT;
 		/*
 		 * compte dac output:
-		 * 50kn  = 25.722m/s = 2.04v = 255 dac
+		 * 48kn  = 24.693m/s = 2.04v = 255 dac
 		 */
-		v = (float)wind_data->speed / 2572.2 * 255.0;
+		v = (float)wind_data->speed / 2469.3 * 255.0;
 		if (v > 255)
 			v = 255;
 		c = (unsigned char)v;
