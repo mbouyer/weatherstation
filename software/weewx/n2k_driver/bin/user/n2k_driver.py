@@ -95,7 +95,7 @@ class N2kDriver(weewx.drivers.AbstractDevice):
                     _packet['pressure'] = press / 100
                 else:
                     press = 0
-                print('SID %x s %x temp %d s %x hum %d press %d' % (sid , tsource, temp, hsource, hum, press))
+                #print('SID %x s %x temp %d s %x hum %d press %d' % (sid , tsource, temp, hsource, hum, press))
             elif pgn == 61847:
                 sid, rain = struct.unpack("=BH", data)
                 if sid != self.last_rain_sid:
@@ -106,14 +106,17 @@ class N2kDriver(weewx.drivers.AbstractDevice):
                             drain = rain - self.last_rain_count
                         if drain < 255: # avoid silly values
                             _packet['rain'] = drain * 0.2794;
-                        print('SID %x rain %d' % (sid, drain))
+                        #print('SID %x rain %d' % (sid, drain))
                         new_data += 1
                     self.last_rain_count = rain
                     self.last_rain_sid = sid
+            elif pgn == 130306:
+                sid, speed, dir, ref = struct.unpack("=BHHB", data)
+                _packet['windSpeed'] = speed / 100
+                _packet['windDir'] = dir / 62831.853 * 360
+                new_data += 1
             else:
                 continue
-                #_packet['windSpeed']
-                #_packet['windDir']
                 #_packet['consBatteryVoltage']
                 #_packet['supplyVoltage']
  
