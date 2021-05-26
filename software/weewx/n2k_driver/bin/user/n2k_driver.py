@@ -22,6 +22,7 @@ import time
 import socket
 import struct
 import sys
+from math import pi, cos, sin, atan2
 
 import weewx.drivers
 
@@ -62,6 +63,13 @@ class N2kDriver(weewx.drivers.AbstractDevice):
         self.last_rain_sid = 0xff
         self.last_rain_value = 0
 
+        self.last_wind_time = 0
+        self.last_wind_sid = 0xff
+        self.wind_speed_av = 0
+        self.wind_dir_av_n = 0
+        self.wind_dir_av_e = 0
+        self.wind_count = 0
+
         log.info("listening on interface %s" % self.intf)
 
     def genLoopPackets(self):
@@ -72,7 +80,8 @@ class N2kDriver(weewx.drivers.AbstractDevice):
             saddr, daddr, pgn = dissect_can_id(can_id)
 
             # map the data into a weewx loop packet
-            _packet = {'dateTime': int(time.time() + 0.5),
+            current_time = int(time.time() + 0.5)
+            _packet = {'dateTime': current_time,
                        'usUnits': weewx.METRICWX}
 
             if pgn == 130311:
@@ -112,9 +121,27 @@ class N2kDriver(weewx.drivers.AbstractDevice):
                     self.last_rain_sid = sid
             elif pgn == 130306:
                 sid, speed, dir, ref = struct.unpack("=BHHB", data)
-                _packet['windSpeed'] = speed / 100
-                _packet['windDir'] = dir / 62831.853 * 360
-                new_data += 1
+
+                if self.last_wind_sid == sid:
+                    continue
+                speed = speed / 100.0
+                dir = dir / 62831.853 * 360
+                self.last_wind_sid = sid
+                self.wind_speed_av += speed
+                self.wind_dir_av_n += cos(dir * pi/180)
+                self.wind_dir_av_e += sin(dir * pi/180)
+                self.wind_count += 1
+                if self.last_wind_time != current_time:
+                    _packet['windSpeed'] = self.wind_speed_av / self.wind_count
+                    dir = atan2(self.wind_dir_av_e, self.wind_dir_av_n) * 180/pi
+                    dir = (dir + 360) % 360
+                    _packet['windDir'] = dir
+                    new_data += 1
+                    self.last_wind_time = current_time
+                    self.wind_speed_av = 0
+                    self.wind_dir_av_n = 0
+                    self.wind_dir_av_e = 0
+                    self.wind_count = 0
             else:
                 continue
                 #_packet['consBatteryVoltage']
