@@ -76,7 +76,8 @@ static enum i2c_status {
 	READ_TEMP,
 	READ_HUM,
 	SEND_TEMP,
-	SEND_HUM
+	SEND_HUM,
+	FAIL
 } i2c_status;
 
 #define STH20_ADDR	0x40
@@ -485,11 +486,12 @@ main(void) __naked
 
 	if (i2c_writecmd(STH20_ADDR, STH20_READR) == 0) {
 		printf("STH20_READR fail\n");
+		i2c_status = FAIL;
 	} else {
 		i2c_readvalue(STH20_ADDR, &i2cval);
 		printf("sth20 reg 0x%x\n", i2cval);
+		i2c_status = SEND_TEMP;
 	}
-	i2c_status = SEND_TEMP;
 	counter_sth20 = 0;
 
 	/* setup timer1 */

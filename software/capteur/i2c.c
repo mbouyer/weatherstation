@@ -44,8 +44,7 @@ static char i2c_writeaddrreg(const char, const char);
 		i2c_wait_count++; \
 		if (i2c_wait_count == 10000) { \
 			printf(("I2C timeout\n")); \
-			for (i2c_wait_count = 0; i2c_wait_count < 512; i2c_wait_count++) ; \
-			__asm__("reset"); \
+			goto end; \
 		} \
 	} \
     }
@@ -88,6 +87,8 @@ i2c_writeaddrreg(const char address, const char reg)
 	}
 	DPRINTF(("done\n"));
 	return 1;
+end:
+	return 0;
 }
 
 char
@@ -115,7 +116,7 @@ i2c_readvalue(const char address, uint16_t *data)
 
 	if (SSPCON2bits.ACKSTAT) {    
 		printf("i2c_readreg: addr no ack\n");
-		goto end;
+		goto stop;
 	}
 	/* printf("done\n"); */       
 
@@ -142,11 +143,12 @@ i2c_readvalue(const char address, uint16_t *data)
 		/* printf("ACK OK\n"); */
 	}
 	ret = 1;
-end:
+stop:
 	/* generate a stop */
 	I2C_CLEAR;
 	SSPCON2bits.PEN=1;
 	I2C_WAIT;
+end:
 	I2C_CLEAR;
 	return ret;
 }
@@ -158,14 +160,15 @@ i2c_writecmd(const char address, char cmd)
 
 	/* start transaction and select register */
 	if (i2c_writeaddrreg(address, cmd) == 0)
-		goto end;
+		goto stop;
 
 	ret = 1;
-end:
+stop:
 	/* generate a stop */
 	I2C_CLEAR;
 	SSPCON2bits.PEN=1;
 	I2C_WAIT;
+end:
 	I2C_CLEAR;
 	return ret;
 }
@@ -177,7 +180,7 @@ i2c_writereg(const char address, char reg, uint8_t data)
 
 	/* start transaction and select register */
 	if (i2c_writeaddrreg(address, reg) == 0)
-		goto end;
+		goto stop;
 
 	/* transmit data */
 	I2C_CLEAR;
@@ -187,16 +190,17 @@ i2c_writereg(const char address, char reg, uint8_t data)
 
 	if (SSPCON2bits.ACKSTAT) {    
 		printf("i2c_writereg: data no ack\n");
-		goto end;
+		goto stop;
 	}
 	/* printf("done\n"); */       
 
 	ret = 1;
-end:
+stop:
 	/* generate a stop */
 	I2C_CLEAR;
 	SSPCON2bits.PEN=1;
 	I2C_WAIT;
+end:
 	I2C_CLEAR;
 	return ret;
 }
