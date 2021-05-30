@@ -103,6 +103,8 @@ static unsigned char anemo_rxbufi;
 static unsigned char anemo_rxbufs;
 static unsigned char anemo_rxbufs_ready;
 
+#define ANEMO_DIR_OFFSET 1800 /* deg * 10 */
+
 static uint16_t wind_speed; /* kn * 10 */
 static uint16_t wind_angle; /* deg * 10 */
 static unsigned char wind_ok;
@@ -327,6 +329,9 @@ parse_anemo_rx(void)
 	}
 	if (dot == 0)
 		wind_angle = wind_angle * 10;
+	wind_angle = wind_angle + ANEMO_DIR_OFFSET;
+	if (wind_angle > 3600)
+		wind_angle = wind_angle - 3600;
 	printf("wangle %d\n", wind_angle);
 
 	rxbuf++; i++; /* skip , */
