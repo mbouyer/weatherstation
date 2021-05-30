@@ -84,7 +84,7 @@ class N2kDriver(weewx.drivers.AbstractDevice):
             _packet = {'dateTime': current_time,
                        'usUnits': weewx.METRICWX}
 
-            if pgn == 130311:
+            if pgn == 130311: #NMEA2000_ENV_PARAM
                 sid, source, temp, hum, press = struct.unpack("=BBHHH", data)
                 tsource = source & 0x3f
                 hsource = (source & 0xc0) >> 6
@@ -105,7 +105,7 @@ class N2kDriver(weewx.drivers.AbstractDevice):
                 else:
                     press = 0
                 #print('SID %x s %x temp %d s %x hum %d press %d' % (sid , tsource, temp, hsource, hum, press))
-            elif pgn == 61847:
+            elif pgn == 61847: #PRIVATE_RAIN_COUNTER
                 sid, rain = struct.unpack("=BH", data)
                 if sid != self.last_rain_sid:
                     if self.last_rain_sid != 0xff:
@@ -119,7 +119,7 @@ class N2kDriver(weewx.drivers.AbstractDevice):
                         new_data += 1
                     self.last_rain_count = rain
                     self.last_rain_sid = sid
-            elif pgn == 130306:
+            elif pgn == 130306: #NMEA2000_WIND_DATA
                 sid, speed, dir, ref = struct.unpack("=BHHB", data)
 
                 if self.last_wind_sid == sid:
@@ -142,9 +142,15 @@ class N2kDriver(weewx.drivers.AbstractDevice):
                     self.wind_dir_av_n = 0
                     self.wind_dir_av_e = 0
                     self.wind_count = 0
+            elif pgn == 127508: #NMEA2000_BATTERY_STATUS
+                instance, volt, amp, temp, sid = struct.unpack("=BhhHB", data)
+
+                _packet['consBatteryVoltage'] = volt / 100
+                _packet['consBatteryCurrent'] = amp / 10000 
+                _packet['consBatteryTemp'] = temp / 100 - 273.15
+                new_data += 1
             else:
                 continue
-                #_packet['consBatteryVoltage']
                 #_packet['supplyVoltage']
  
             if new_data > 0:
