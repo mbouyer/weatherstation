@@ -26,6 +26,10 @@ from math import pi, cos, sin, atan2
 
 import weewx.drivers
 
+import weewx.units
+weewx.units.obs_group_dict['consBatteryTemp'] = 'group_temperature'
+weewx.units.obs_group_dict['consBatteryCurrent'] = 'group_amp'
+
 DRIVER_NAME = 'N2kDriver'
 DRIVER_VERSION = "0.1"
 
