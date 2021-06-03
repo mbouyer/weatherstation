@@ -234,6 +234,10 @@ sth20_read(void) {
 		if (i2c_readvalue(STH20_ADDR, &i2cval) != 0) {
 			float tmp = (i2cval & 0xfffc);
 			tmp = tmp * 125000.0 / 65536.0 - 6000.0;
+			if (tmp < 0)
+				tmp = 0;
+			if (tmp > 100000)
+				tmp = 100000;
 			hum = tmp;
 			printf("STH20 hum 0x%x %lu rain %d\n", i2cval, hum, raincount);
 		} else {
