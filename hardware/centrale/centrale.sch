@@ -385,9 +385,10 @@ L Interface_CAN_LIN:MCP2542FDxMF U3
 U 1 1 60543024
 P 7400 5200
 F 0 "U3" H 7500 4850 50  0000 C CNN
-F 1 "MCP2542FDxMF" H 7400 5200 50  0000 C CNN
+F 1 "TLE9250V" H 7400 5200 50  0000 C CNN
 F 2 "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm" H 7400 4700 50  0001 C CIN
 F 3 "http://ww1.microchip.com/downloads/en/DeviceDoc/MCP2542FD-4FD-MCP2542WFD-4WFD-Data-Sheet20005514B.pdf" H 7400 5200 50  0001 C CNN
+F 4 "TLE9250V" H 7400 5200 50  0001 C CNN "P/N"
 	1    7400 5200
 	1    0    0    -1  
 $EndComp
@@ -751,9 +752,9 @@ Text Label 3250 2250 0    50   ~ 0
 RSTB
 Text Label 3250 2350 0    50   ~ 0
 RD
-Text Label 3250 2450 0    50   ~ 0
+Text Label 3250 3150 0    50   ~ 0
 D0-SDA
-Text Label 3250 2550 0    50   ~ 0
+Text Label 3250 3050 0    50   ~ 0
 D1-A0
 Text Label 3250 3250 0    50   ~ 0
 RW
@@ -848,21 +849,15 @@ Wire Wire Line
 Connection ~ 3550 2150
 Wire Wire Line
 	3200 3250 3550 3250
-Wire Wire Line
-	3550 3250 3550 3150
 Connection ~ 3550 2350
 Wire Wire Line
 	4700 4450 4400 4450
 Wire Wire Line
-	4400 4450 4400 2450
-Wire Wire Line
-	4400 2450 3200 2450
+	4400 4450 4400 3150
 Wire Wire Line
 	4700 4550 4300 4550
 Wire Wire Line
-	4300 4550 4300 2550
-Wire Wire Line
-	4300 2550 3200 2550
+	4300 4550 4300 3050
 Wire Wire Line
 	3200 3350 4200 3350
 Wire Wire Line
@@ -892,7 +887,7 @@ Wire Wire Line
 	3200 2650 3550 2650
 Connection ~ 3550 2650
 Wire Wire Line
-	3550 2650 3550 2350
+	3550 2650 3550 2550
 Wire Wire Line
 	3200 2750 3550 2750
 Connection ~ 3550 2750
@@ -908,16 +903,6 @@ Wire Wire Line
 Connection ~ 3550 2950
 Wire Wire Line
 	3550 2950 3550 2850
-Wire Wire Line
-	3200 3050 3550 3050
-Connection ~ 3550 3050
-Wire Wire Line
-	3550 3050 3550 2950
-Wire Wire Line
-	3200 3150 3550 3150
-Connection ~ 3550 3150
-Wire Wire Line
-	3550 3150 3550 3050
 $Comp
 L Device:C_Small C8
 U 1 1 60510692
@@ -1156,4 +1141,32 @@ Connection ~ 2550 5000
 Wire Wire Line
 	2550 5200 2550 5300
 Connection ~ 3050 5200
+Wire Wire Line
+	3200 3150 4400 3150
+Wire Wire Line
+	3550 2950 3550 3250
+Wire Wire Line
+	3200 3050 4300 3050
+Wire Wire Line
+	3200 2550 3550 2550
+Connection ~ 3550 2550
+Wire Wire Line
+	3550 2550 3550 2450
+Wire Wire Line
+	3200 2450 3550 2450
+Connection ~ 3550 2450
+Wire Wire Line
+	3550 2450 3550 2350
+Text Label 3250 2950 0    50   ~ 0
+D2
+Text Label 3250 2850 0    50   ~ 0
+D3
+Text Label 3250 2750 0    50   ~ 0
+D4
+Text Label 3250 2650 0    50   ~ 0
+D5
+Text Label 3250 2550 0    50   ~ 0
+D6
+Text Label 3250 2450 0    50   ~ 0
+D7
 $EndSCHEMATC
