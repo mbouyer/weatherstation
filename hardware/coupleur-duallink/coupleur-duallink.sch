@@ -1,0 +1,130 @@
+EESchema Schematic File Version 4
+EELAYER 30 0
+EELAYER END
+$Descr A4 11693 8268
+encoding utf-8
+Sheet 1 1
+Title ""
+Date ""
+Rev ""
+Comp ""
+Comment1 ""
+Comment2 ""
+Comment3 ""
+Comment4 ""
+$EndDescr
+$Comp
+L Connector:RJ45 J1
+U 1 1 607C9BAE
+P 5450 3250
+F 0 "J1" H 5120 3346 50  0000 R CNN
+F 1 "RJ45" H 5120 3255 50  0000 R CNN
+F 2 "Connector_RJ:RJ45_Amphenol_54602-x08_Horizontal" V 5450 3275 50  0001 C CNN
+F 3 "~" V 5450 3275 50  0001 C CNN
+F 4 "54601-908WPLF" H 5450 3250 50  0001 C CNN "P/N"
+	1    5450 3250
+	-1   0    0    -1  
+$EndComp
+$Comp
+L Connector:RJ45 J3
+U 1 1 607C9BB5
+P 7750 3250
+F 0 "J3" H 7420 3346 50  0000 R CNN
+F 1 "RJ45" H 7420 3255 50  0000 R CNN
+F 2 "Connector_RJ:RJ45_Amphenol_54602-x08_Horizontal" V 7750 3275 50  0001 C CNN
+F 3 "~" V 7750 3275 50  0001 C CNN
+F 4 "54601-908WPLF" H 7750 3250 50  0001 C CNN "P/N"
+	1    7750 3250
+	-1   0    0    -1  
+$EndComp
+Wire Wire Line
+	5050 3050 6600 3050
+Wire Wire Line
+	7350 3150 6600 3150
+Wire Wire Line
+	5050 3250 6400 3250
+Wire Wire Line
+	7350 3350 6400 3350
+$Comp
+L Connector:RJ45 J2
+U 1 1 607CBB1B
+P 6500 4450
+F 0 "J2" H 6170 4546 50  0000 R CNN
+F 1 "RJ45" H 6170 4455 50  0000 R CNN
+F 2 "Connector_RJ:RJ45_Amphenol_54602-x08_Horizontal" V 6500 4475 50  0001 C CNN
+F 3 "~" V 6500 4475 50  0001 C CNN
+F 4 "54601-908WPLF" H 6500 4450 50  0001 C CNN "P/N"
+	1    6500 4450
+	0    1    -1   0   
+$EndComp
+Wire Wire Line
+	5050 3550 6200 3550
+Wire Wire Line
+	6200 3550 6200 4050
+Wire Wire Line
+	5050 3450 6300 3450
+Wire Wire Line
+	6300 3450 6300 4050
+Wire Wire Line
+	6400 4050 6400 3950
+Connection ~ 6400 3350
+Wire Wire Line
+	6400 3350 5050 3350
+Wire Wire Line
+	6500 4050 6500 3950
+Wire Wire Line
+	6500 3950 6400 3950
+Connection ~ 6400 3950
+Wire Wire Line
+	6400 3950 6400 3350
+Wire Wire Line
+	6600 4050 6600 3950
+Connection ~ 6600 3150
+Wire Wire Line
+	6600 3150 5050 3150
+Wire Wire Line
+	6700 4050 6700 3950
+Wire Wire Line
+	6700 3950 6600 3950
+Connection ~ 6600 3950
+Wire Wire Line
+	6600 3950 6600 3150
+Wire Wire Line
+	7350 3550 6900 3550
+Wire Wire Line
+	6900 3550 6900 4050
+Wire Wire Line
+	7350 3450 6800 3450
+Wire Wire Line
+	6800 3450 6800 4050
+Text Label 6750 3150 0    50   ~ 0
+GND
+Text Label 6750 3350 0    50   ~ 0
++12V
+Wire Wire Line
+	6400 3350 6400 3250
+Connection ~ 6400 3250
+Wire Wire Line
+	6400 3250 7350 3250
+Wire Wire Line
+	6600 3150 6600 3050
+Connection ~ 6600 3050
+Wire Wire Line
+	6600 3050 7350 3050
+NoConn ~ 5050 2850
+NoConn ~ 5050 2950
+Wire Wire Line
+	7350 2850 7700 2850
+Wire Wire Line
+	7700 2850 7700 3550
+Wire Wire Line
+	7700 3550 7350 3550
+Connection ~ 7350 3550
+Wire Wire Line
+	7350 2950 7650 2950
+Wire Wire Line
+	7650 2950 7650 3450
+Wire Wire Line
+	7650 3450 7350 3450
+Connection ~ 7350 3450
+$EndSCHEMATC

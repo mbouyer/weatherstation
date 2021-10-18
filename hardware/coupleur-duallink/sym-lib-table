@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name mcp4706)(type Legacy)(uri /home/bouyer/kicad/libraries//mcp4706.lib)(options "")(descr ""))
+)
