@@ -560,7 +560,7 @@ main(void) __naked
 
 	printf("\nready");
 	poll_count = timer0_read();
-	while (nmea2000_addr_status != ADDR_STATUS_OK) {
+	while (nmea2000_status != NMEA2000_S_OK) {
 		nmea2000_poll(5);
 		while ((timer0_read() - poll_count) < TIMER0_5MS) {
 			nmea2000_receive();
@@ -627,12 +627,12 @@ again:
 			nmea2000_receive();
 		}
 
-		if (nmea2000_addr_status == ADDR_STATUS_CLAIMING) {
+		if (nmea2000_status == NMEA2000_S_CLAIMING) {
 			if ((timer0_read() - poll_count) > TIMER0_5MS) {
 				nmea2000_poll(5);
 				poll_count = timer0_read();
 			}
-			if (nmea2000_addr_status == ADDR_STATUS_OK) {
+			if (nmea2000_status == NMEA2000_S_OK) {
 				printf("new addr %d\n", nmea2000_addr);
 			}
 		};
@@ -676,7 +676,7 @@ noi2c:
 		if (RCREG2 == 'r')
 			break;
 
-		if (nmea2000_addr_status == ADDR_STATUS_OK) {
+		if (nmea2000_status == NMEA2000_S_OK) {
 			__asm
 			SLEEP
 			__endasm;
