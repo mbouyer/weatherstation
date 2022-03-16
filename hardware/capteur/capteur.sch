@@ -669,8 +669,6 @@ Wire Wire Line
 	3050 4000 3050 4150
 Wire Wire Line
 	3050 4000 2850 4000
-NoConn ~ 3800 4250
-NoConn ~ 3800 4050
 $Comp
 L Connector:Conn_01x02_Male J1
 U 1 1 605A3D3C
@@ -1025,7 +1023,6 @@ F 4 "PIC18F27Q84_ISS" H 4600 4550 50  0001 C CNN "P/N"
 	1    4600 4550
 	1    0    0    -1  
 $EndComp
-NoConn ~ 3800 4150
 Wire Wire Line
 	3400 5150 3800 5150
 Wire Wire Line
@@ -1075,4 +1072,28 @@ Wire Wire Line
 	6100 5150 5700 5150
 Wire Wire Line
 	5500 5150 5400 5150
+$Comp
+L power:GND #PWR?
+U 1 1 623B5C83
+P 3650 4150
+F 0 "#PWR?" H 3650 3900 50  0001 C CNN
+F 1 "GND" V 3655 4022 50  0000 R CNN
+F 2 "" H 3650 4150 50  0001 C CNN
+F 3 "" H 3650 4150 50  0001 C CNN
+	1    3650 4150
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	3800 4050 3750 4050
+Wire Wire Line
+	3750 4050 3750 4150
+Wire Wire Line
+	3750 4250 3800 4250
+Wire Wire Line
+	3800 4150 3750 4150
+Connection ~ 3750 4150
+Wire Wire Line
+	3750 4150 3750 4250
+Wire Wire Line
+	3750 4150 3650 4150
 $EndSCHEMATC
