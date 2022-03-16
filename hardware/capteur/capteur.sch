@@ -46,18 +46,18 @@ F 1 "10Mhz" V 3650 4500 50  0000 L CNN
 F 2 "Crystal:Crystal_HC18-U_Vertical" H 3500 4600 50  0001 C CNN
 F 3 "~" H 3500 4600 50  0001 C CNN
 	1    3500 4600
-	0    1    1    0   
+	0    1    -1   0   
 $EndComp
 $Comp
 L Device:C_Small C3
 U 1 1 604455E3
-P 3250 4700
-F 0 "C3" V 3450 4700 50  0000 C CNN
-F 1 "22pF" V 3350 4700 50  0000 C CNN
-F 2 "Capacitor_THT:C_Disc_D3.8mm_W2.6mm_P2.50mm" H 3250 4700 50  0001 C CNN
-F 3 "~" H 3250 4700 50  0001 C CNN
-	1    3250 4700
-	0    1    1    0   
+P 3250 4500
+F 0 "C3" V 3450 4500 50  0000 C CNN
+F 1 "22pF" V 3350 4500 50  0000 C CNN
+F 2 "Capacitor_THT:C_Disc_D3.8mm_W2.6mm_P2.50mm" H 3250 4500 50  0001 C CNN
+F 3 "~" H 3250 4500 50  0001 C CNN
+	1    3250 4500
+	0    1    -1   0   
 $EndComp
 $Comp
 L power:GND #PWR02
@@ -71,19 +71,19 @@ F 3 "" H 3100 4600 50  0001 C CNN
 	0    1    1    0   
 $EndComp
 Wire Wire Line
-	3350 4500 3500 4500
+	3350 4700 3500 4700
 Wire Wire Line
-	3500 4500 3800 4500
+	3500 4700 3800 4700
 Wire Wire Line
 	3800 4500 3800 4550
-Connection ~ 3500 4500
+Connection ~ 3500 4700
 Wire Wire Line
 	3800 4650 3800 4700
 Wire Wire Line
-	3800 4700 3500 4700
+	3800 4500 3500 4500
 Wire Wire Line
-	3500 4700 3350 4700
-Connection ~ 3500 4700
+	3500 4500 3350 4500
+Connection ~ 3500 4500
 Wire Wire Line
 	3150 4700 3150 4600
 Wire Wire Line
@@ -618,13 +618,13 @@ $EndComp
 $Comp
 L Device:C_Small C2
 U 1 1 604452D8
-P 3250 4500
-F 0 "C2" V 3021 4500 50  0000 C CNN
-F 1 "22pF" V 3112 4500 50  0000 C CNN
-F 2 "Capacitor_THT:C_Disc_D3.8mm_W2.6mm_P2.50mm" H 3250 4500 50  0001 C CNN
-F 3 "~" H 3250 4500 50  0001 C CNN
-	1    3250 4500
-	0    1    1    0   
+P 3250 4700
+F 0 "C2" V 3021 4700 50  0000 C CNN
+F 1 "22pF" V 3112 4700 50  0000 C CNN
+F 2 "Capacitor_THT:C_Disc_D3.8mm_W2.6mm_P2.50mm" H 3250 4700 50  0001 C CNN
+F 3 "~" H 3250 4700 50  0001 C CNN
+	1    3250 4700
+	0    1    -1   0   
 $EndComp
 Wire Wire Line
 	3050 4350 3050 4500
