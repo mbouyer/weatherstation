@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name centrale-rescue)(type Legacy)(uri ${KIPRJMOD}/centrale-rescue.lib)(options "")(descr ""))
+  (lib (name regul-local)(type Legacy)(uri ${LOCALMOD}/regul-local.lib)(options "")(descr ""))
+)

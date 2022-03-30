@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name mcp4706)(type Legacy)(uri ${LOCALMOD}/mcp4706.lib)(options "")(descr ""))
+  (lib (name vetus-rescue)(type Legacy)(uri ${KIPRJMOD}/vetus-rescue.lib)(options "")(descr ""))
+)
