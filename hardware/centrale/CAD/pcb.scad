@@ -35,8 +35,8 @@ translate([-25.091195,-21.45,5]) plot(h = 6);
 translate([-25.091195,19.41,5]) plot(h = 6);
 difference() {
 	base_m();
-	translate([61, -48, 8]) rotate([0,-90,0]) cylinder(h = 10, d = 5);
-	translate([-61, -48, 8]) rotate([0,90,0]) cylinder(h = 10, d = 5);
+	translate([61, -48, 8]) rotate([0,-90,0]) cylinder(h = 10, d = 4);
+	translate([-61, -48, 8]) rotate([0,90,0]) cylinder(h = 10, d = 4);
 	translate([25.115805,-21.45,0]) cylinder(h = 5, d = 3);
 	translate([25.115805,19.41,0]) cylinder(h = 5, d = 3);
 	translate([-25.091195,-21.45,0]) cylinder(h = 5, d = 3);
