@@ -39,8 +39,8 @@ module base(h = 20) {
 module base_m(h = 15) {
 	minkowski() {
 		translate([0,0,2]) base(h - 4);
-		//sphere(r = 2, $fa = fa_small, $fs = fs_small);
-		cube([4,4,4], center=true);
+		sphere(r = 2, $fa = fa_small, $fs = fs_small);
+		//cube([4,4,4], center=true);
 
 	}
 }
@@ -52,6 +52,7 @@ mirror([1,0,0]) {
     	translate([0,0,3]) linear_extrude(height = 20)
     	    import(file="display.dxf", layer="hidden");
     	translate([80.05330086, 5.21254627, 0]) buttons();
+    	translate([0, -71.9 + 5, 5]) rotate([0,90,0]) cylinder(d = 3.2, h = 132, center = true);
     }
 
     // clips for PCB
