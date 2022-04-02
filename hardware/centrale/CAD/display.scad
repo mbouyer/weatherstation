@@ -5,11 +5,22 @@ $fs = 1;
 fa_small = 6;
 fs_small = 0.2;
 
+module clip_top(l, e) {
+	translate([l, 0, 0]) rotate([0, -90, 0])
+	    linear_extrude(height=l) polygon(points = [
+	        [0, 0],
+	        [0, e+1.5],
+	        [0.5, e+1.5],
+	        [3, e],
+	        [3, 0]
+	    ]);
+}
+
 module clip(b=0, h=3, l=4, e=3) {
 	translate([-l/2, -e, 0]) {
 	    translate([0, e+0.5, 0]) cube([l, 3, b]);
 	    cube([l, e, h+b]);
-	    translate([0, 0, b+h]) cube([l, e+1.5, 3]);
+	    translate([0, 0, b+h]) clip_top(l=l, e=e);
 	}
 }
 
