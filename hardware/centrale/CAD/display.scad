@@ -5,6 +5,13 @@ $fs = 1;
 fa_small = 6;
 fs_small = 0.2;
 
+module plot(h = 6, d1 = 4, d2 = 6) {
+	difference() {
+		cylinder(h = h, d = d2);
+		translate([0,0,-1]) cylinder(h = h + 2, d = d1);
+	}
+}
+
 module clip_top(l, e) {
 	translate([l, 0, 0]) rotate([0, -90, 0])
 	    linear_extrude(height=l) polygon(points = [
@@ -31,6 +38,14 @@ module buttons(d = 9.5) {
 	translate([10.60660172, 0, 0]) cylinder(d = d, h = 5);
 }
 
+module buttons_support(h = 8) {
+    plot(h = h, d1 = 4, d2 = 7);
+    translate([-16.5,18,0]) cube([6,6,h]);
+    translate([10.5,18,0]) cube([6,6,h]);
+    translate([10.5,-13.5,0]) cube([6,6,h]);
+    translate([-12.5,-19.5,0]) cube([6,6,h]);
+}
+
 module cubeandcyl(l = 6, h = 11) {
     translate([0, 91/2, h / 2]) cube([103 * 2, 91, h], center = true);
     translate([0, 0, l/2]) hull() {
@@ -50,8 +65,8 @@ module base(h = 20) {
 module base_m(h = 15) {
 	minkowski() {
 		translate([0,0,2]) base(h - 4);
-		sphere(r = 2, $fa = fa_small, $fs = fs_small);
-		//cube([4,4,4], center=true);
+		//sphere(r = 2, $fa = fa_small, $fs = fs_small);
+		cube([4,4,4], center=true);
 
 	}
 }
@@ -66,11 +81,7 @@ mirror([1,0,0]) {
     	translate([0, -71.9 + 5, 5]) rotate([0,90,0]) cylinder(d = 3.2, h = 132, center = true);
     }
 
-    // clips for PCB
-    translate([94.05330086, 26.71254627 + 0.25, 0]) rotate([0,0,180]) clip(b = 8, h=1.8);
-    translate([93.80330086, -5.78745373 - 0.25, 0]) clip(b = 8, h=1.8);
-    translate([66.05330086, 26.71254627 + 0.25, 0]) rotate([0,0,180]) clip(b = 8, h=1.8);
-    translate([66.05330086, -11.78745373 - 0.25, 0]) clip(b = 8, h=1.8);
+    translate([80.05330086, 5.21254627, 3]) buttons_support(h = 8);
 
     // clips for LCD
     translate([41.1,  -43.9 - 0.25, 0]) clip(b = 0, h=6.7, e = 2);
