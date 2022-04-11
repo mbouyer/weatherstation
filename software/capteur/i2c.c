@@ -25,7 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <pic18fregs.h>
+#include <xc.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <i2c.h>
@@ -38,57 +38,53 @@ static char i2c_writeaddrreg(const char, const char);
 #define DPRINTF(x) /**/
 #endif
 
-#define I2C_WAIT { \
+static void i2c_status(void);
+
+#define I2C_WAIT_RX { \
 	int i2c_wait_count = 0; \
-	while (!PIR1bits.SSPIF) { \
+	while (!I2C1STAT1bits.RXBF) { \
 		i2c_wait_count++; \
-		if (i2c_wait_count == 10000) { \
-			printf(("I2C timeout\n")); \
-			goto end; \
+		if (i2c_wait_count == 30000) { \
+			printf(("I2C RX timeout\n")); \
+			i2c_status(); \
+			for (i2c_wait_count = 0; i2c_wait_count < 512; i2c_wait_count++) ; \
+			return 0; __asm__("reset"); \
 		} \
 	} \
     }
-#define I2C_CLEAR { PIR1bits.SSPIF = 0; }
 
-static char
-i2c_writeaddrreg(const char address, const char reg)
+#define I2C_WAIT_TX { \
+	int i2c_wait_count = 0; \
+	while (!I2C1STAT1bits.TXBE) { \
+		i2c_wait_count++; \
+		if (i2c_wait_count == 30000) { \
+			printf("I2C TX timeout\n"); \
+			i2c_status(); \
+			for (i2c_wait_count = 0; i2c_wait_count < 512; i2c_wait_count++) ; \
+			return 0; __asm__("reset"); \
+		} \
+	} \
+    }
+
+static inline uint8_t
+i2c_wait_idle(void)
 {
-	/* wait for module idle */    
-	while (((SSPSTAT & 0x04) | (SSPCON2 & 0x1f)) != 0) {
-		DPRINTF(("writeaddrreg transmit not idle\n"));
-		; /* wait */
+	int i2c_wait_count = 0;
+	uint8_t tries = 0;
+	while (I2C1STAT0bits.MMA) {
+		i2c_wait_count++;
+		if (i2c_wait_count == 10000) {
+			if (tries > 0 || I2C1CON1bits.P) {
+				printf(("I2C idle timeout\n"));
+				i2c_status();
+				return 0;
+			}
+			I2C1CON1bits.P = 1;
+			tries++;
+			i2c_wait_count = 0;
+		}
 	}
-	/* generate start */
-	I2C_CLEAR;
-	SSPCON2 = _SEN; /* SSPCON2bits.SEN=1; */
-	I2C_WAIT;
-
-	/* transmit address */
-	I2C_CLEAR;
-	SSPCON2 = _ACKSTAT; /* SSPCON2bits.ACKSTAT=1; */
-	SSPBUF = (address << 1);      
-	DPRINTF(("send address "));
-	I2C_WAIT
-	if (SSPCON2bits.ACKSTAT) {    
-		printf("i2c_writeaddrreg: addr no ack\n");
-		return 0;
-	}
-	DPRINTF(("done\n"));
-	/* transmit reg */
-	I2C_CLEAR;
-	SSPCON2 = _ACKSTAT; /* SSPCON2bits.ACKSTAT=1; */
-	SSPBUF = reg;
-	DPRINTF(("send reg "));
-	I2C_WAIT;
-
-	if (SSPCON2bits.ACKSTAT) {    
-		DPRINTF(("i2c_writeaddrreg: reg no ack\n"));
-		return 0;
-	}
-	DPRINTF(("done\n"));
 	return 1;
-end:
-	return 0;
 }
 
 char
@@ -96,111 +92,97 @@ i2c_readvalue(const char address, uint16_t *data)
 {
 	char ret = 0;
 	char b;
+	uint16_t i2c_wait_count;
 
-	/* wait for module idle */    
-	while (((SSPSTAT & 0x04) | (SSPCON2 & 0x1f)) != 0) {
-		DPRINTF(("i2c_readreg transmit not idle\n"));
-		; /* wait */
-	}
-	/* generate start */
-	I2C_CLEAR;
-	SSPCON2 = _SEN; /* SSPCON2bits.SEN=1; */
-	I2C_WAIT;
+	if (i2c_wait_idle() == 0)
+		return 0;
 
-	/* transmit address */
-	I2C_CLEAR;
-	SSPCON2 = _ACKSTAT; /* SSPCON2bits.ACKSTAT=1; */
-	SSPBUF = ((address << 1) | 0x01);
-	/* printf("send address2 "); */
-	I2C_WAIT
+	I2C1STAT1bits.CLRBF = 1;
+	I2C1STAT1 = 0;
+	I2C1PIR = 0;
+	I2C1ERR = 0;
 
-	if (SSPCON2bits.ACKSTAT) {    
-		printf("i2c_readreg: addr no ack\n");
-		goto stop;
-	}
-	/* printf("done\n"); */       
+	I2C1CON1bits.ACKCNT = 1;      
+	I2C1CON1bits.ACKDT = 0;       
+	I2C1ADB1 = address | 1;       
+	I2C1CNTH = 0;
+	I2C1CNTL = 2;
+	I2C1CON0bits.S = 1;
+	I2C1CON0bits.RSEN = 0;
 
 	*data = 0;
 	for (b = 0; b < 2; b++) {
-		I2C_CLEAR;
-		SSPCON2bits.RCEN=1;   
-		/* printf("receive "); */
-		I2C_WAIT;
-
-		*data |= SSPBUF;     
+		for (i2c_wait_count = 10000; i2c_wait_count > 0; i2c_wait_count--) {
+			if (I2C1STAT1bits.RXBF)
+				break;
+		}
+		if (i2c_wait_count == 0) {
+			printf("I2C RX timeout: ");
+			i2c_status();
+			I2C1STAT1 = 0;
+			I2C1ERR = 0;
+			return 0;
+		}
+		*data |= I2C1RXB;     
 		if (b == 0)
 			*data = *data << 8;
-		/* printf("BF OK 0x%x\n", *data); */
-		I2C_CLEAR;
-		if (b == 0)
-			SSPCON2bits.ACKDT=0;
-		else
-			SSPCON2bits.ACKDT=1;
-		/* send an ack */     
-		SSPCON2bits.ACKEN = 1;
-		/* printf("ACK "); */ 
-		I2C_WAIT;
-		/* printf("ACK OK\n"); */
 	}
-	ret = 1;
-stop:
-	/* generate a stop */
-	I2C_CLEAR;
-	SSPCON2bits.PEN=1;
-	I2C_WAIT;
-end:
-	I2C_CLEAR;
-	return ret;
+	return 1;
 }
 
 char
 i2c_writecmd(const char address, char cmd)
 {
-	char ret = 0;
+        if (i2c_wait_idle() == 0)
+		return 0;
 
-	/* start transaction and select register */
-	if (i2c_writeaddrreg(address, cmd) == 0)
-		goto stop;
+	I2C1STAT1bits.CLRBF = 1;
+	I2C1STAT1 = 0;
+	I2C1PIR = 0;
+	I2C1ERR = 0;
 
-	ret = 1;
-stop:
-	/* generate a stop */
-	I2C_CLEAR;
-	SSPCON2bits.PEN=1;
-	I2C_WAIT;
-end:
-	I2C_CLEAR;
-	return ret;
+	/* send register address */   
+	I2C1PIR = 0;
+	I2C1CON0bits.RSEN = 0;
+	I2C1CON1bits.ACKDT = 0;       
+	I2C1CON1bits.ACKCNT = 1;
+	I2C1ADB1 = address;
+	I2C1CNTH = 0;
+	I2C1CNTL = 1;
+	I2C1TXB = cmd;
+	I2C1CON0bits.S = 1;
+	I2C_WAIT_TX;
+	if (I2C1ERRbits.NACKIF)       
+		return 0;
+	return 1;
 }
 
 char
 i2c_writereg(const char address, char reg, uint8_t data)
 {
-	char ret = 0;
+	uint8_t i;
 
-	/* start transaction and select register */
-	if (i2c_writeaddrreg(address, reg) == 0)
-		goto stop;
+	if (i2c_wait_idle() == 0)     
+		return 0;
 
-	/* transmit data */
-	I2C_CLEAR;
-	SSPBUF = data;
-	/* printf("send data "); */   
-	I2C_WAIT
+	/* send register address */
+	I2C1CON0bits.RSEN = 0;
+	I2C1CON1bits.ACKDT = 0;
+	I2C1CON1bits.ACKCNT = 1;
+	I2C1ADB1 = address;
+	I2C1CNTH = 0;
+	I2C1CNTL = 2;
+	I2C1TXB = reg;
+	I2C1CON0bits.S = 1;
+	I2C_WAIT_TX;
+	I2C1TXB = data;
+	return 1;
+}
 
-	if (SSPCON2bits.ACKSTAT) {    
-		printf("i2c_writereg: data no ack\n");
-		goto stop;
-	}
-	/* printf("done\n"); */       
-
-	ret = 1;
-stop:
-	/* generate a stop */
-	I2C_CLEAR;
-	SSPCON2bits.PEN=1;
-	I2C_WAIT;
-end:
-	I2C_CLEAR;
-	return ret;
+static void
+i2c_status(void)
+{
+	printf("CON 0x%x 0x%x 0x%x", I2C1CON0, I2C1CON1, I2C1CON2);
+	printf(" STAT 0x%x 0x%x PIR 0x%x", I2C1STAT0, I2C1STAT1, I2C1PIR);
+	printf(" ERR 0x%x CNT 0x%x 0x%x\n", I2C1ERR, I2C1CNTH, I2C1CNTL);
 }

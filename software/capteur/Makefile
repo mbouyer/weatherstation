@@ -1,30 +1,30 @@
-.SUFFIXES: .o .hex
+ROM_BASE=600
+IVECT_BASE=0x608
+
+.SUFFIXES: .p1 .hex
 
 .PATH: ${.CURDIR}/../../../pic18_n2k
 
-CC= sdcc  --use-non-free --Werror --fsigned-char
-CFLAGS= --fomit-frame-pointer --denable-peeps --optimize-cmp --optimize-df
+CC= xc8-cc -mcpu=18f27q84 -mno-config -mkeep-startup -O2 -mcodeoffset=${ROM_BASE}
+CFLAGS= -DIVECT_BASE=${IVECT_BASE}
 CFLAGS+= -I${.CURDIR} -I${.CURDIR}/../../../pic18_n2k
-OBJECTS= main.o serial.o nmea2000.o raddeg.o i2c.o
-HEADERS= serial.h nmea2000.h nmea2000_pgn.h nmea2000_user.h raddeg.h i2c.h
+OBJECTS= main.p1 serial.p1 nmea2000.p1 raddeg.p1 i2c.p1
+HEADERS= serial.h nmea2000.h nmea2000_pgn.h nmea2000_user.h raddeg.h
+HEADERS+= i2c.h
+HEADERS+= nmea2000_pic18_ecan.c
 
 all: capteur.hex
-bin: capteur.bin
 
 obj:
 	mkdir obj
 
-capteur.bin: capteur.hex
-	hex2bin1k ${.ALLSRC} ${.TARGET}
-	@ls -lh ${.TARGET}
-
 capteur.hex: ${OBJECTS}
-	${CC} -V -Wl,-s${.CURDIR}/pic18f26k80.lkr --no-crt --ivt-loc=0x400 --obanksel=2 -mpic16 -p18f26k80 -Wl,libc18f.lib ${.ALLSRC} -o ${.TARGET} -llibm18f.lib
+	${CC} -Wa,-a -Wl,-Map=capteur.map  -o ${.TARGET} ${.ALLSRC}
 
 ${OBJECTS}: ${HEADERS} Makefile
 
-.c.o:
-	${CC} ${CFLAGS} -V --no-crt --ivt-loc=0x400 --obanksel=2 -mpic16 -p18f26k80 -c ${.IMPSRC} -o ${.TARGET}
+.c.p1:
+	${CC} ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 clean:
-	rm -f capteur.bin *.o *.hex *.cod *.lst *.asm
+	rm -f *.p1 *.hex

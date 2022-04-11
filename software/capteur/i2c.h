@@ -26,15 +26,24 @@
  */
 
 #define I2C_INIT { \
-	TRISCbits.TRISC3 = 1; \
-	TRISCbits.TRISC4 = 1; \
-	SSPCON1 = 0x08; /* i2c master mode */ \
-	SSPADD = 24; /* 100Khz clock, 400Khz with PLL */ \
-	SSPSTAT = 0x80; /* disable slew rate control */ \
-	SSPCON1bits.SSPEN=1; /* enable SPI module */ \
-	SSPCON2 = 0; \
-	PIR1bits.SSPIF=0; \
-	PIR2bits.BCLIF=0; \
+	RC4I2C = 0x41; /* I2C fast slew-rate, no pull-up, i2c threshold */ \
+	RC3I2C = 0x41; /* I2C fast slew-rate, no pull-up, i2c threshold */ \
+	RC3PPS = 0x37; /* SCL */ \
+	RC4PPS = 0x38; /* SDA */ \
+	I2C1SCLPPS = 0x13; /* RC3 */ \
+	I2C1SDAPPS = 0x14; /* RC4 */ \
+	ODCONCbits.ODCC3 = 1; \
+	ODCONCbits.ODCC4 = 1; \
+	LATCbits.LATC3 = 1; \
+	LATCbits.LATC4 = 1; \
+	TRISCbits.TRISC3 = 0; \
+	TRISCbits.TRISC4 = 0; \
+	I2C1CON0 = 0x04; /* On, 7 bits I2C host mode */ \
+	I2C1CON1 = 0; \
+	I2C1CON2 = 0; /* address buffer enabled */ \
+	I2C1CLK = 3; /* clock = mfintosc  (500khz) */ \
+	I2C1BAUD = 0; /* prescale = 1 */ \
+	I2C1CON0bits.EN = 1; \
     }
 
 char i2c_readvalue(const char, uint16_t *data);

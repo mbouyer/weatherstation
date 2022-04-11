@@ -1,6 +1,6 @@
 /* $Id: autopilot_serial.h,v 1.2 2017/06/05 11:00:18 bouyer Exp $ */
 /*
- * Copyright (c) 2017 Manuel Bouyer
+ * Copyright (c) 2022 Manuel Bouyer
  *
  * All rights reserved.
  *
@@ -26,7 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-char getchar(void);
+int getchar(void);
 
 /* #define UART_BUFSIZE 16 */
 /* #define UART_BUFSIZE_MASK 0x0f */
@@ -36,22 +36,10 @@ char getchar(void);
 extern char uart_txbuf[UART_BUFSIZE];
 extern unsigned char uart_txbuf_prod;
 extern volatile unsigned char uart_txbuf_cons;
-void usart_putchar (char c) __wparam;
+void usart_putchar (char c);
 
 #define USART_INIT(p) { \
-		IPR3bits.TX2IP=p; \
-		IPR3bits.RC2IP=p; \
+		IPR4bits.U1TXIP=p; \
+		IPR4bits.U1RXIP=p; \
 		uart_txbuf_prod = uart_txbuf_cons = 0; \
 	}
-
-#define USART_INTR {\
-	if (PIE3bits.TX2IE && PIR3bits.TX2IF) { \
-		if (uart_txbuf_prod == uart_txbuf_cons) { \
-			PIE3bits.TX2IE = 0; /* buffer empty */ \
-		} else { \
-			/* Place char in TXREG - this starts transmition */ \
-			TXREG2 = uart_txbuf[uart_txbuf_cons]; \
-			uart_txbuf_cons = (uart_txbuf_cons + 1) & UART_BUFSIZE_MASK;\
-		} \
-	} \
-    }

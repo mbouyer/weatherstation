@@ -1,6 +1,6 @@
 /* $Id: main.c,v 1.36 2019/03/12 19:24:19 bouyer Exp $ */
 /*
- * Copyright (c) 2021 Manuel Bouyer
+ * Copyright (c) 2022 Manuel Bouyer
  *
  * All rights reserved.
  *
@@ -26,7 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <pic18fregs.h>
+#include <xc.h>
 #include <stdio.h> 
 #include <string.h> 
 #include <stdlib.h> 
@@ -36,15 +36,7 @@
 #include "serial.h"
 #include "i2c.h"
 
-extern unsigned char stack; 
-extern unsigned char stack_end;
-
-#pragma stack 0x100 256
-
-void _reset (void) __naked __interrupt 0;
-void _startup (void) __naked;
-
-unsigned long devid; 
+unsigned long devid, revid;
 
 unsigned long nmea2000_user_id; 
 
@@ -58,11 +50,16 @@ unsigned int timer1_read(void);
 #pragma callee_saves timer0_read
 
 #define TIMER0_5MS 48
+#define TIMER0_1MS 10
 
-#define CLRWDT __asm__("clrwdt")
+#define LED LATCbits.LATC5
+
+static unsigned char led_pattern;     
 
 static char counter_10hz;
 static char counter_1hz;
+static unsigned char seconds;
+
 static volatile union softintrs {
 	struct softintrs_bits {
 		char int_10hz : 1;	/* 0.1s timer */
@@ -208,7 +205,8 @@ user_receive()
 #endif
 }
 
-PUTCHAR(c)
+void
+putch(char c)
 {
         if (PORTBbits.RB7) {
 		usart_putchar(c);
@@ -227,7 +225,6 @@ sth20_read(void) {
 		} else {
 			printf("READ_TEMP failed\n");
 		}
-		raincount = timer1_read();
 		i2c_status = SEND_HUM;
 		break;
 	case READ_HUM:
@@ -239,16 +236,13 @@ sth20_read(void) {
 			if (tmp > 100000)
 				tmp = 100000;
 			hum = tmp;
-			printf("STH20 hum 0x%x %lu rain %d\n", i2cval, hum, raincount);
+			printf("STH20 hum 0x%x %lu\n", i2cval, hum);
 		} else {
 			printf("READ_HUM failed\n");
 		}
 		i2c_status = SEND_TEMP;
 		send_env_param();
-		send_rain_counter();
-		sid++;
-		if (sid == 0xfe)
-			sid = 0;
+		SIDINC(sid);
 		break;
 	}
 }
@@ -386,8 +380,8 @@ parse_anemo_rx(void)
 	printf("wok %d\n", wind_ok);
 }
 
-void
-main(void) __naked
+int
+main(void)
 {
 	char c;
 	static unsigned int poll_count;
@@ -397,29 +391,58 @@ main(void) __naked
 	softintrs.byte = 0;
 	counter_10hz = 25;
 	counter_1hz = 10;
+	seconds = 0;
 	i2c_status = IDLE;
 
 	anemo_rxbufi = 0;
 	anemo_rxbufs = 0;
 	wind_ok = 0;
 
-	devid = 0;
-	__asm
-	movlw UPPER __DEVID1
-	movwf _TBLPTRU, a
-	movlw HIGH __DEVID1
-	movwf _TBLPTRH, a
-	movlw LOW __DEVID1
-	movwf _TBLPTRL, a
-	tblrd*+;
-	movff _TABLAT, _devid;
-	tblrd*+;
-	movff _TABLAT, _devid + 1;
-	__endasm;
+        /* read devid and user IDs */ 
+	TBLPTR = 0x200000;
+	asm("tblrd*+;");
+	asm("movff TABLAT, _nmea2000_user_id;");
+	asm("tblrd*+;");
+	asm("movff TABLAT, _nmea2000_user_id + 1;");
+	TBLPTR = 0x3ffffc;
+	asm("tblrd*+;");
+	asm("movff TABLAT, _revid;"); 
+	asm("tblrd*+;");
+	asm("movff TABLAT, _revid + 1;");
+	asm("tblrd*+;");
+	asm("movff TABLAT, _devid;"); 
+	asm("tblrd*+;");
+	asm("movff TABLAT, _devid + 1;");
+
+	/* disable unused modules */  
+	PMD0 = 0x7a; /* keep clock and IOC */
+	PMD1 = 0xfc; /* keep timer0/1 */
+	PMD2 = 0x02; /* keep can module, TU16A */
+	PMD3 = 0xff;
+	PMD4 = 0xff;
+	PMD5 = 0xff;
+	PMD6 = 0xe6; /* keep UART2, UART1 and I2C */
+	PMD7 = 0xff;
+	PMD8 = 0xff;
+
+	ANSELC = ANSELB = ANSELA = 0; 
+	LED = 0;
+	TRISCbits.TRISC5 = 0;
+	LED = 1;
+
+        /* CANRX on RB3 */
+	CANRXPPS = 0x0B;
+	/* CANTX on RB2 */
+	LATBbits.LATB2 = 1; /* output value when idle */
+	TRISBbits.TRISB2 = 0;
+	RB2PPS = 0x46;
+
+	/* configure watchdog timer for 2s */
+	WDTCON0 = 0x16;
+	WDTCON1 = 0x07;
 
 	/* configure sleep mode: PRI_IDLE */
-	OSCCONbits.SCS = 0;
-	OSCCONbits.IDLEN = 1;
+	CPUDOZE = 0x80;
 
 	/* everything is low priority by default */
 	IPR1 = 0;
@@ -427,69 +450,75 @@ main(void) __naked
 	IPR3 = 0;
 	IPR4 = 0;
 	IPR5 = 0;
-	INTCON = 0;
-	INTCON2 = 0;
-	INTCON3 = 0;
-	RCONbits.IPEN=1; /* enable interrupt priority */
+	IPR6 = 0;
+	IPR7 = 0;
+	IPR8 = 0;
+	IPR9 = 0;
+	IPR10 = 0;
+	IPR11 = 0;
+	IPR12 = 0;
+	IPR13 = 0;
+	IPR14 = 0;
+	IPR15 = 0;
+	INTCON0 = 0;
+	INTCON1 = 0;
+	INTCON0bits.IPEN=1; /* enable interrupt priority */
+
+	USART_INIT(0)
 
 	/* configure timer0 as free-running counter at 9.765625Khz * 4 */
-	T0CON = 0x07; /* b00000111: internal clock, 1/256 prescaler */
-	INTCONbits.TMR0IF = 0;
-	INTCONbits.TMR0IE = 0; /* no interrupt */
-	T0CONbits.TMR0ON = 1;
+	T0CON0 = 0x0;
+	T0CON0bits.MD16 = 1; /* 16 bits */
+	T0CON1 = 0x48; /* 01001000 Fosc/4, sync, 1/256 prescale */      
+	PIR3bits.TMR0IF = 0;
+	PIE3bits.TMR0IE = 0; /* no interrupt */
+	T0CON0bits.T0EN = 1;
 
-	/* configure timer2 for 250Hz interrupt */
-	PMD1bits.TMR2MD=0;
-	T2CON = 0x23; /* b00100011: postscaller 1/5, prescaler 1/16 */
-	PR2 = 125; /* 250hz output */
-	T2CONbits.TMR2ON = 1;
-	PIR1bits.TMR2IF = 0;
-	IPR1bits.TMR2IP = 1; /* high priority interrupt */
-	PIE1bits.TMR2IE = 1;
+	/* configure UTMR for 10Hz interrupt */
+	TU16ACON0 = 0x04; /* period match IE */
+	TU16ACON1 = 0x00;
+	TU16AHLT = 0x00; /* can't use hardware reset because of HW bug */
+	TU16APS = 249; /* prescaler = 250 -> 40000 Hz */
+	TU16APRH = (4000 >> 8) & 0xff;
+	TU16APRL = 4000 & 0xff;       
+	TU16ACLK = 0x2; /* Fosc */    
+	TUCHAIN = 0;
+	TU16ACON0bits.ON = 1;
+	TU16ACON1bits.CLR = 1;
+	IPR0bits.TU16AIP = 1; /* high priority interrupt */
+	PIE0bits.TU16AIE = 1;
 
-	USART_INIT(0);
 	I2C_INIT;
 
-	/* configure UART1 (anemo) for 4800Bps at 10Mhz */
-	SPBRG1 = 31;
-	TXSTA1 = 0x00; /* disable TX */
-	BAUDCON1 = 0x10; /* TX1 low-level idle state */
-	RCSTA1 = 0x10; /* enable RX */
+	/* configure UART2 (anemo) for 4800Bps at 10Mhz */
+	U2RXPPS = 0x17; /* RC7 */     
+	U2BRGL = 129;
+	U2BRGH = 0;
+	U2CON0 = 0x10; /* RXEN */     
+	U2CON2 = 0x80; /* run during overflow */
+	U2CON1 = 0; /* off for now */ 
+	IPR8bits.U2RXIP = 0;
 
-	INTCONbits.GIE_GIEH=1;  /* enable high-priority interrupts */   
-	INTCONbits.PEIE_GIEL=1; /* enable low-priority interrrupts */   
+	INTCON0bits.GIEH=1;  /* enable high-priority interrupts */
+	INTCON0bits.GIEL=1; /* enable low-priority interrrupts */
 
-	/* read user-id from config bits */
-	nmea2000_user_id = 0;
-	__asm
-	movlw UPPER __IDLOC0
-	movwf _TBLPTRU, a
-	movlw HIGH __IDLOC0
-	movwf _TBLPTRH, a
-	movlw LOW __IDLOC0
-	movwf _TBLPTRL, a
-	tblrd*+;
-	movff _TABLAT, _nmea2000_user_id;
-	tblrd*+;
-	movff _TABLAT, _nmea2000_user_id + 1;
-	__endasm;
+        printf("hello user_id 0x%lx devid 0x%x revid 0x%x\n", nmea2000_user_id,
+	    devid, revid);
 
 	nmea2000_init();
-
-	stdout = STREAM_USER; /* Use the macro PUTCHAR with printf */
+	poll_count = timer0_read();
 
 	/* enable watch dog timer */
-	WDTCON = 0x01;
+	WDTCON0bits.SEN = 1;
 
 	printf("\nready");
-	poll_count = timer0_read();
 	while (nmea2000_status != NMEA2000_S_OK) {
 		nmea2000_poll(5);
 		while ((timer0_read() - poll_count) < TIMER0_5MS) {
 			nmea2000_receive();
 		}
 		poll_count = timer0_read();
-		CLRWDT;
+		CLRWDT();
 	}
 
 	printf(", addr %d, id %ld\n", nmea2000_addr, nmea2000_user_id);
@@ -505,29 +534,35 @@ main(void) __naked
 	counter_sth20 = 0;
 
 	/* setup timer1 */
-	LATAbits.LATA5 = 1;
-	ANCON0bits.ANSEL4 = 0;
+	T1CKIPPS = 0x5; /* T1 clock on PORTA5 */
 	TMR1H = 0;
 	TMR1L = 0;
+	T1CON = 0x03; /* async, RD16 */
 	T1GCON = 0;
-	T1CON = 0x82; /* clock on T1CKI, RD16 */
+	T1CLK = 0; /* clock on T1CKIPPS */
 	T1CONbits.TMR1ON = 1;
 
 	/* enable anemo RX */
-	RCSTA1bits.SPEN = 1;
-	PIE1bits.RC1IE = 1;
+	U2CON1 = 0x80; /* on */       
+	PIE8bits.U2RXIE = 1;
+
+	led_pattern = 0x55; /* 4 blinks at startup */
+
 again:
 	printf("hello user_id 0x%lx devid 0x%lx\n", nmea2000_user_id, devid);
 	while (1) {
-		CLRWDT;
-		if (PIR5bits.RXBnIF) {
+		CLRWDT();
+		if (C1INTLbits.RXIF) {
 			nmea2000_receive();
 		}
 
-		if (nmea2000_status == NMEA2000_S_CLAIMING) {
-			if ((timer0_read() - poll_count) > TIMER0_5MS) {
-				nmea2000_poll(5);
-				poll_count = timer0_read();
+		if (nmea2000_status != NMEA2000_S_OK) {
+			uint16_t ticks, tmrv;
+			tmrv = timer0_read();
+			ticks = tmrv - poll_count;
+			if (ticks > TIMER0_5MS) {
+				poll_count = tmrv;
+				nmea2000_poll(ticks / TIMER0_1MS);
 			}
 			if (nmea2000_status == NMEA2000_S_OK) {
 				printf("new addr %d\n", nmea2000_addr);
@@ -540,27 +575,63 @@ again:
 			counter_1hz--;
 			if (counter_1hz == 0) {
 				counter_1hz = 10;
+				seconds++;
+				if (nmea2000_status != NMEA2000_S_OK &&
+				    led_pattern == 0) {
+					led_pattern = 0xf; /* one long blink */
+				}
+				if (canbus_mute) {
+					led_pattern = 0x1; /* 1 short blink */ 
+				} else if (wind_ok == 0) {
+					led_pattern = 0x5; /* 2 short blink */ 
+				}     
+				wind_ok = 0;
+
 				sth20_send();
+
+				if (seconds == 10) {
+					seconds = 0;
+					raincount = timer1_read();
+					printf("rain %d\n", raincount);
+					send_rain_counter();
+					SIDINC(sid);
+					/* in normal state, one short
+					 * blink every 10s
+					 */ 
+					if (led_pattern == 0)
+						led_pattern = 1;
+				}
 			}
+			LED = (led_pattern & 0x1);
+			led_pattern = led_pattern >> 1;
+			if (nmea2000_status == NMEA2000_S_OK) {
+				uint16_t ticks, tmrv;  
+
+				tmrv = timer0_read();
+				ticks = tmrv - poll_count;
+				if (ticks > TIMER0_5MS) {
+					poll_count = tmrv;
+					nmea2000_poll(ticks / TIMER0_1MS);
+				 }
+				 if (nmea2000_status != NMEA2000_S_OK) { 
+					 printf("lost CAN bus %d\n", ticks);
+														 }     
+													 }
 		}
 		if (softintrs.bits.anemo_rx) {
 			parse_anemo_rx();
 			softintrs.bits.anemo_rx = 0;
 			if (wind_ok) {
 				send_wind_data();
-				sid++;
-				if (sid == 0xfe)
-					sid = 0;
+				SIDINC(sid);
 			}
 		}
 
-		if (RCREG2 == 'r')
+		if (PIR4bits.U1RXIF && (U1RXB == 'r'))
 			break;
 
 		if (nmea2000_status == NMEA2000_S_OK) {
-			__asm
-			SLEEP
-			__endasm;
+			SLEEP();
 		}
 	}
 	while ((c = getchar()) != 'r') {
@@ -568,104 +639,66 @@ again:
 		goto again;
 	}
 end:
+	WDTCON0bits.SEN = 0;
 	printf("returning\n");
-	while (PIE3bits.TX2IE)
+	while (!PIR4bits.U1TXIF)      
 		; /* wait for transmit to complete */
-	INTCONbits.PEIE=0; /* disable peripheral interrupts */
-	INTCONbits.GIE=0;  /* disable interrrupts */
+	INTCON0bits.GIEH=0;
+	INTCON0bits.GIEL=0;
+	RESET();
+	return 0;
 }
 
 unsigned int
-timer0_read() __naked
+timer0_read()
 {
+	unsigned int value;
+
 	/* return TMR0L | (TMR0H << 8), reading TMR0L first */
-	__asm
-	movf    _TMR0L, w
-	movff   _TMR0H, _PRODL
-	return
-	__endasm;
+	di();
+	asm("movff TMR0L, timer0_read@value");
+	asm("movff TMR0H, timer0_read@value+1");
+	ei();
+	return value;
 }
 
 unsigned int
-timer1_read() __naked
+timer1_read()
 {
+	unsigned int value;
+
 	/* return TMR1L | (TMR1H << 8), reading TMR1L first */
-	__asm
-	movf    _TMR1L, w
-	movff   _TMR1H, _PRODL
-	return
-	__endasm;
+	di();
+	asm("movff TMR1L, timer0_read@value");
+	asm("movff TMR1H, timer0_read@value+1");
+	ei();
+	return value;
 }
 
-/* Vectors */
-void _reset (void) __naked __interrupt 0
+void
+delay_ms(unsigned char delay)
 {
-	__asm__("goto __startup");
+	unsigned int date = timer0_read();
+	unsigned int diff;
+	do {
+		diff = timer0_read() - date;
+	} while (diff < delay * TIMER0_1MS);
 }
 
-
-void _startup (void) __naked
+void __interrupt(__irq(TU16A), __high_priority, base(IVECT_BASE))       
+irqh_tu16a(void)
 {
-
-  __asm
-    // Initialize the stack pointer
-    lfsr 1, _stack_end
-    lfsr 2, _stack_end
-    clrf _TBLPTRU, 0    // 1st silicon doesn't do this on POR
-    
-    // initialize the flash memory access configuration. this is harmless
-    // for non-flash devices, so we do it on all parts.
-    bsf _EECON1, 7, 0
-    bcf _EECON1, 6, 0
-    __endasm ;
-
-  /* Call the user's main routine */
-  main();
-  __asm__("reset");
+	TU16ACON1bits.CLR = 1;
+	TU16ACON1bits.PRIF = 0;       
+	softintrs.bits.int_10hz = 1;  
 }
 
-/*
- * high priority interrupt. Split in 2 parts; one for the entry point
- * where we'll deal with timer0, then jump to another address 
- * as we don't have enough space before the low priority vector
- */
-void _irqh (void) __naked __shadowregs __interrupt 1
+void __interrupt(__irq(U2RX), __low_priority, base(IVECT_BASE))
+irql_uart2(void)
 {
-	__asm
-	btfss _PIR1, 1
-	bra other
-	bcf   _PIR1, 1
-	goto _irqh_timer2
-other:
-	retfie 1
-	nop
-	__endasm ;
-}
-
-void irqh_timer2(void) __naked
-{
-	/*
-	 * no sdcc registers are automatically saved,
-	 * so we have to be carefull with C code !
-	 */
-	if (--counter_10hz == 0) {
-		counter_10hz = 25;
-		softintrs.bits.int_10hz = 1;
-	}			
-	__asm
-	retfie 1
-	nop
-	__endasm;
-}
-
-void _irql (void) __interrupt 2 /* low priority */
-{
-	unsigned char c;
-
-	USART_INTR;
-
-	if (PIR1bits.RC1IF && PIE1bits.RC1IE) {
-		c = RCREG1;
+	char c;
+	while (PIE8bits.U2RXIE && PIR8bits.U2RXIF) {
+		c = U2RXB;
 		if (c == 0x0a) {
 			; /* ignore */
 		} else if (c == 0x0d) {
@@ -689,20 +722,8 @@ void _irql (void) __interrupt 2 /* low priority */
 				anemo_rxbufi++;
 			}
 		}
-		if (RCSTA1bits.OERR) { 
-			RCSTA1bits.CREN = 0;
-			RCSTA1bits.CREN = 1; 
+		if (U2ERRIRbits.RXFOIF) {
+			U2ERRIRbits.RXFOIF = 0;
 		}
 	}
-
-	if (PIR5 != 0) {
-		nmea2000_intr();
-	}
-	if (PIR5bits.RXBnIF)
-		PIE5bits.RXBnIE = 0; /* main loop will check */
-
-#if 0
-	if (PIR5 != 0)
-		PIE5 &= _PIE5_TXBnIE;
-#endif
 }

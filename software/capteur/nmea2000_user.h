@@ -30,8 +30,6 @@
 
 extern unsigned long nmea2000_user_id;
 
-#define CAN_PORTB
-
 #define NMEA2000_USER_ID nmea2000_user_id /* unique number */
 #define NMEA2000_USER_MANUF 0x7feUL /* manufacturer code */
 #define NMEA2000_USER_DEVICE_INSTANCE 0
@@ -40,6 +38,7 @@ extern unsigned long nmea2000_user_id;
 #define NMEA2000_USER_INDUSTRY_GROUP 4
 #define NMEA2000_USER_SYSTEM_INSTANCE 0
 
-#define BRGCON1_uval (0x01 | 0x40)
-#define BRGCON2_uval (0x80 | 2 << 3 | 2)
-#define BRGCON3_uval (0x80 | 2)
+/* setup for 250Kbs, 1Tq = 1/10Mhz */
+#define NBTCFGU_uval 26 /* Tseg1 = 27 Tq */
+#define NBTCFGH_uval 11 /* Tseg2 = 12 Tq */
+#define NBTCFGL_uval 10 /* Swj = 11Tq */

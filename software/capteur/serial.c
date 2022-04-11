@@ -1,6 +1,6 @@
 /* $Id: serial.c,v 1.2 2017/06/05 11:00:19 bouyer Exp $ */
 /*
- * Copyright (c) 2017 Manuel Bouyer
+ * Copyright (c) 2022 Manuel Bouyer
  *
  * All rights reserved.
  *
@@ -26,7 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <pic18fregs.h>
+#include <xc.h>
 #include <stdio.h>
 #include <serial.h>
 
@@ -35,44 +35,59 @@ unsigned char uart_txbuf_prod;
 volatile unsigned char uart_txbuf_cons;
 
 void
-usart_putchar (char c) __wparam
+usart_putchar (char c)
 {
 #if 1
 	unsigned char new_uart_txbuf_prod = (uart_txbuf_prod + 1) & UART_BUFSIZE_MASK;
 
 again:
         while (new_uart_txbuf_prod == uart_txbuf_cons) {
-		PIE3bits.TX2IE = 1; /* ensure we'll make progress */
+		PIE4bits.U1TXIE = 1; /* ensure we'll make progress */
 	}
 	uart_txbuf[uart_txbuf_prod] = c;
 	uart_txbuf_prod = new_uart_txbuf_prod;
-	PIE3bits.TX2IE = 1;
+	PIE4bits.U1TXIE = 1;
 	if (c == '\n') {
 		c = '\r';
 		new_uart_txbuf_prod = (uart_txbuf_prod + 1) & UART_BUFSIZE_MASK;
 		goto again;
 	}
 #else
+	char d = c;
 again:
-	while (!PIR3bits.TX2IF)
-		; /* wait */
-	TXREG2 = c;
-	if (c == '\n') {
-		c = '\r';
+	if  (!PIR4bits.U1TXIF) {
+		goto again;
+	}
+	U1TXB = d;
+	if (d == '\n') {
+		d = '\r';
 		goto again;
 	}
 #endif
 }
 
-char
+void __interrupt(__irq(U1TX), __low_priority, base(IVECT_BASE))
+irql_uart1(void)
+{
+	if (PIE4bits.U1TXIE && PIR4bits.U1TXIF) {
+		if (uart_txbuf_prod == uart_txbuf_cons) {
+			PIE4bits.U1TXIE = 0; /* buffer empty */
+		} else {
+			/* Place char in TXREG - this starts transmition */
+			U1TXB = uart_txbuf[uart_txbuf_cons];
+			uart_txbuf_cons = (uart_txbuf_cons + 1) & UART_BUFSIZE_MASK;
+		}
+	}
+}
+
+int
 getchar(void)
 {
 	char c;
-	while (!PIR3bits.RC2IF); /* wait for a char */
-	c = RCREG2;
-	if (RCSTA2bits.OERR) {
-		RCSTA2bits.CREN = 0;
-		RCSTA2bits.CREN = 1;
+	while (!PIR4bits.U1RXIF); /* wait for a char */
+	c = U1RXB;
+	if (U1ERRIRbits.RXFOIF) {
+		U1ERRIRbits.RXFOIF = 0;
 	}
 	return c;
 }
