@@ -5,6 +5,28 @@ $fs = 1;
 fa_small = 6;
 fs_small = 0.2;
 
+
+module clipslock_base(l, h2) {
+    translate([l,0,0]) rotate([0,-90,0])
+	    linear_extrude(height=l) polygon(points = [
+		[0,0],
+		[0, 2],
+		[h2, 3],
+		[h2, 0],
+		]);
+}
+
+module clipslock(el = 4, eh= 6, l = 20, h1 = 5, h2 = 10)
+{
+	difference() {
+	    union() {
+	    	cube([l, el, h1]);
+	    	translate([0,0,h1]) cube([l, eh, h2 - h1 - 1]);
+	    }
+	    clipslock_base(l = l, h2 = h2);
+	}
+}
+
 module plot(h = 6, d1 = 4, d2 = 6) {
 	difference() {
 		cylinder(h = h, d = d2);
@@ -93,8 +115,10 @@ mirror([1,0,0]) {
     translate([80.05330086, 5.21254627, 3]) buttons_support(h = 8);
 
     // clips for LCD
-    translate([41.1,  -43.9 - 0.25, 0]) clip(b = 0, h=6.7, e = 2);
-    translate([-41.1,  -43.9 - 0.25, 0]) clip(b = 0, h=6.7, e = 2);
+    translate([61.1 - 20 - 5, -48.9, 3]) clipslock_base(l = 20, h2 = 10);
+    translate([-61.1 + 5,  -48.9, 3]) clipslock_base(l = 20, h2 = 10);
+    translate([61.1 - 20 - 5, -48.9 + 1, 3]) clipslock(el = 5, eh = 8, l = 20, h1 = 6.7, h2 = 10);
+    translate([-61.1 + 5,  -48.9 + 1, 3]) clipslock(el = 5, eh = 8, l = 20, h1 = 6.7, h2 = 10);
 
     difference() {
         union() {
