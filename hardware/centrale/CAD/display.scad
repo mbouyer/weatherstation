@@ -46,7 +46,7 @@ module buttons_support(h = 8) {
     translate([-12.5,-19.5,0]) cube([6,6,h]);
 }
 
-module cubeandcyl(l = 6, h = 11) {
+module cubeandcyl(l = 4.5, h = 11) {
     translate([0, 91/2, h / 2]) cube([103 * 2, 91, h], center = true);
     translate([0, 0, l/2]) hull() {
  	translate([0, -l/2, 0]) cube([132, l, l], center = true);
@@ -58,7 +58,7 @@ module base(h = 20) {
     intersection() {
 	linear_extrude(height = h)
 	    import(file="display.dxf", layer="extrude");
-        translate([0, -49.9, 0]) cubeandcyl(l = 6, h = h);
+        translate([0, -49.9, 0]) cubeandcyl(l = 4.5, h = h);
     }
 }
 
@@ -71,14 +71,13 @@ module base_m(h = 15) {
 	}
 }
 
-
 mirror([1,0,0]) {
     difference() {
     	base_m();
     	translate([0,0,3]) linear_extrude(height = 20)
     	    import(file="display.dxf", layer="hidden");
     	translate([80.05330086, 5.21254627, 0]) buttons();
-    	translate([0, -71.9 + 5, 5]) rotate([0,90,0]) cylinder(d = 3.2, h = 132, center = true);
+    	translate([0, -71.9 + 4.5, 4.5]) rotate([0,90,0]) cylinder(d = 3.2, h = 132, center = true);
     }
 
     translate([80.05330086, 5.21254627, 3]) buttons_support(h = 8);
