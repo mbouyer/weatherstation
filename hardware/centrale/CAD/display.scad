@@ -12,6 +12,16 @@ module plot(h = 6, d1 = 4, d2 = 6) {
 	}
 }
 
+module support_lcd(l = 6, h = 10) {
+    translate([-1,-1,0]) cube([1, l+1, h]);
+    translate([-1,-1,0]) cube([l+1, 1, h]);
+    linear_extrude(height=h) polygon(points = [
+	[0,0],
+	[0, l],
+	[l, 0],
+	]);
+}
+
 module clip_top(l, e) {
 	translate([l, 0, 0]) rotate([0, -90, 0])
 	    linear_extrude(height=l) polygon(points = [
@@ -89,8 +99,8 @@ mirror([1,0,0]) {
     difference() {
         union() {
     	// add plots for LCD
-    	translate([-61.1, 35.9, 3 + 5]) cube([6, 6, 10], center = true);
-    	translate([61.1, 35.9, 3 + 5]) cube([6, 6, 10], center = true);
+    	translate([-63, 38, 3]) rotate([0,0,-90]) support_lcd(l = 6, h = 10);
+    	translate([63, 38, 3]) rotate([0,0,-180]) support_lcd(l = 6, h = 10);
     	translate([-61.1, -43.9 + 5, 3 + 3]) cube([6, 6, 6], center = true);
     	translate([61.1, -43.9 + 5, 3 + 3]) cube([6, 6, 6], center = true);
         }
