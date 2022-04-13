@@ -1,4 +1,4 @@
-//$fn = 50;
+$fn = 100;
 $fa = 5;
 $fs = 1;
 
@@ -97,8 +97,8 @@ module base(h = 20) {
 module base_m(h = 15) {
 	minkowski() {
 		translate([0,0,2]) base(h - 4);
-		//sphere(r = 2, $fa = fa_small, $fs = fs_small);
-		cube([4,4,4], center=true);
+		sphere(r = 2, $fa = fa_small, $fs = fs_small);
+		//cube([4,4,4], center=true);
 
 	}
 }
@@ -117,8 +117,8 @@ mirror([1,0,0]) {
     // clips for LCD
     translate([61.1 - 20 - 5, -48.9, 3]) clipslock_base(l = 20, h2 = 10);
     translate([-61.1 + 5,  -48.9, 3]) clipslock_base(l = 20, h2 = 10);
-    translate([61.1 - 20 - 5, -48.9 + 1, 3]) clipslock(el = 5, eh = 8, l = 20, h1 = 6.7, h2 = 10);
-    translate([-61.1 + 5,  -48.9 + 1, 3]) clipslock(el = 5, eh = 8, l = 20, h1 = 6.7, h2 = 10);
+    // translate([61.1 - 20 - 5, -48.9 + 1, 3]) clipslock(el = 5, eh = 8, l = 20, h1 = 6.7, h2 = 10);
+    // translate([-61.1 + 5,  -48.9 + 1, 3]) clipslock(el = 5, eh = 8, l = 20, h1 = 6.7, h2 = 10);
 
     difference() {
         union() {
