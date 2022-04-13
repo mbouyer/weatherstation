@@ -20,10 +20,10 @@ module clipslock(el = 4, eh= 6, l = 20, h1 = 5, h2 = 10)
 {
 	difference() {
 	    union() {
-	    	cube([l, el, h1]);
-	    	translate([0,0,h1]) cube([l, eh, h2 - h1 - 1]);
+		translate([-1, 2, 0]) cube([l + 3, el - 2, h1]);
+	    	translate([-1, 2, h1]) cube([l + 3, eh - 2, h2 - h1 - 1]);
 	    }
-	    clipslock_base(l = l, h2 = h2);
+	    clipslock_base(l = l + 1, h2 = h2);
 	}
 }
 
