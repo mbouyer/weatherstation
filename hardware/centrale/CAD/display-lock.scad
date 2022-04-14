@@ -24,7 +24,9 @@ module clipslock(el = 4, eh= 6, l = 20, h1 = 5, h2 = 10)
 	    	translate([-1, 2, h1]) cube([l + 3, eh - 2, h2 - h1 - 1]);
 	    }
 	    clipslock_base(l = l + 1, h2 = h2);
+	    translate([l, el - 1, 0]) cube([2, 1, h1]);
 	}
 }
 
-rotate([180,0,0]) clipslock(el = 5, eh = 8, l = 20, h1 = 6.7, h2 = 10);
+rotate([180,0,0]) clipslock(el = 6, eh = 8, l = 20, h1 = 6.8, h2 = 10);
+translate([22, -10, 0]) mirror([1, 0, 0]) rotate([180,0,0]) clipslock(el = 6, eh = 8, l = 20, h1 = 6.8, h2 = 10);
