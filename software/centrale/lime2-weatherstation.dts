@@ -12,18 +12,6 @@
 	status = "disabled";
 };
 
-&pio {
-	spi2_pc_pins: spi2-pc-pins {
-		pins = "PC20", "PC21", "PC22";
-		function = "spi2";
-	};
-
-											spi2_cs0_pc_pin: spi2-cs0-pc-pin {
-		pins = "PC19";
-		function = "spi2";
-	};
-};
-
 &spi2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&spi2_pc_pins>, <&spi2_cs0_pc_pin>;
@@ -55,23 +43,23 @@
 &lradc {
 	vref-supply = <&reg_vcc3v0>;
 	status = "okay";
+	button@right {
+		label = "right";
+		channel = <0>;
+		voltage = <191000>;
+	};
 	button@down {
 		label = "down";
 		channel = <0>;
-		voltage = <191000>;
+		voltage = <391000>;
 	};
 	button@up {
 		label = "up";
 		channel = <0>;
-		voltage = <391000>;
+		voltage = <600000>;
 	};
 	button@left {
 		label = "left";
-		channel = <0>;
-		voltage = <600000>;
-	};
-	button@right {
-		label = "right";
 		channel = <0>;
 		voltage = <794000>;
 	};
