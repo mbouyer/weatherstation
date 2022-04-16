@@ -105,7 +105,8 @@ class N2kDriver(weewx.drivers.AbstractDevice):
                     _packet['outHumidity'] = hum / 250
                     new_data += 1
                 if press < 0xffff:
-                    _packet['pressure'] = press / 100
+                    _packet['barometer'] = press / 10
+                    new_data += 1
                 else:
                     press = 0
                 #print('SID %x s %x temp %d s %x hum %d press %d' % (sid , tsource, temp, hsource, hum, press))
