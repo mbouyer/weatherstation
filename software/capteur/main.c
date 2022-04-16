@@ -77,7 +77,7 @@ static enum i2c_status {
 	FAIL
 } i2c_status;
 
-#define STH20_ADDR	0x40
+#define STH20_ADDR	(0x40 << 1)
 #define STH20_READT_H	0xe3
 #define STH20_READH_H	0xe5
 #define STH20_READT	0xf3
@@ -533,6 +533,8 @@ main(void)
 	}
 	counter_sth20 = 0;
 
+	printf("RA5 0x%x\n", RA5PPS);
+	TRISAbits.TRISA5 = 1;
 	/* setup timer1 */
 	T1CKIPPS = 0x5; /* T1 clock on PORTA5 */
 	TMR1H = 0;
