@@ -40,6 +40,8 @@
 static lv_obj_t *temp_value[NTEMP];
 static lv_obj_t *hum_value[NTEMP];
 static lv_obj_t *baro_value;
+static lv_obj_t *time_value;
+static lv_obj_t *time_value_sec;
 
 static lv_task_t *set_temp_task[NTEMP];
 static lv_task_t *set_baro_task;
@@ -167,6 +169,31 @@ meteo_baro_update(void)
 }
 
 static void
+meteo_time_update(void)
+{
+	static struct tm previous_tm  = { 0 };
+	time_t cur_t;
+	struct tm cur_tm;
+	char buf[8];
+
+	cur_t = time(NULL);
+
+	if (localtime_r(&cur_t, &cur_tm) == NULL)
+		return NULL;
+	if (cur_tm.tm_sec != previous_tm.tm_sec) {
+		snprintf(buf, 8, ":%02d", cur_tm.tm_sec);
+		lv_label_set_text(time_value_sec, buf);
+		if (cur_tm.tm_min != previous_tm.tm_min ||
+		    cur_tm.tm_hour != previous_tm.tm_hour) {
+			snprintf(buf, 8, "%02d:%02d", cur_tm.tm_hour,
+			    cur_tm.tm_min);
+			lv_label_set_text(time_value, buf);
+		}
+		previous_tm = cur_tm;
+	}
+}
+
+static void
 meteo_main_action(lv_obj_t * obj, lv_event_t event)
 {
         printf("main event ");   
@@ -213,6 +240,21 @@ meteo_create_main()
 	set_baro_task = lv_task_create(
 	    meteo_set_baro_timeout, 10000, LV_TASK_PRIO_MID, NULL);
 
+	time_value_sec = lv_label_create(meteo_page, NULL);
+	lv_label_set_style(time_value_sec, LV_LABEL_STYLE_MAIN,
+	    &style_small_text);
+	lv_label_set_text(time_value_sec, ":xx");
+	w = lv_obj_get_width(time_value_sec);
+	h = lv_obj_get_height(time_value_sec);
+	lv_obj_align(time_value_sec, NULL, LV_ALIGN_OUT_BOTTOM_RIGHT,
+	    -(10), -(h + 10));
+	time_value = lv_label_create(meteo_page, NULL);
+	lv_label_set_style(time_value, LV_LABEL_STYLE_MAIN,
+	    &style_medium_text);
+	lv_label_set_text(time_value, "xx:xx");
+	lv_obj_align(time_value, time_value_sec, LV_ALIGN_OUT_LEFT_MID,
+	    0, -2);
+
 	lv_obj_set_click(meteo_page, 1);
 	lv_obj_set_event_cb(meteo_page, meteo_main_action);
 
@@ -225,4 +267,5 @@ meteo_update_main(void)
 		meteo_temp_update(i);
 	}
 	meteo_baro_update();
+	meteo_time_update();
 }
