@@ -30,6 +30,7 @@
 #include "nmea2000_frame.h"
 #include "nmea2000_defs.h"
 #include <array>
+#include <cstdlib>
 #include <time.h>
 #include <assert.h>
 
