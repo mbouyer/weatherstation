@@ -99,6 +99,7 @@ static char anemo_rxbuf2[ANEMO_BUFSIZE];
 static unsigned char anemo_rxbufi;
 static unsigned char anemo_rxbufs;
 static unsigned char anemo_rxbufs_ready;
+static unsigned char anemo_rx_error;
 
 #define ANEMO_DIR_OFFSET 2000 /* deg * 10 */
 
@@ -211,6 +212,9 @@ putch(char c)
         if (PORTBbits.RB7) {
 		usart_putchar(c);
 	}
+#ifdef N2K_PRINTF
+        nmea2000_putchar(c);
+#endif
 }
 
 static void
@@ -277,9 +281,10 @@ sth20_send(void)
 static void
 parse_anemo_rx(void)
 {
-	static char *rxbuf;
+	static char *rxbuf, *crxbuf;
 	static unsigned char i;
 	unsigned char dot;
+	unsigned char csum, rcsum;
 
 	i = 0;
 	if (anemo_rxbufs_ready == 0) {
@@ -292,8 +297,37 @@ parse_anemo_rx(void)
 	if (*rxbuf != '$')
 		return;
 	rxbuf++; i++;
+	crxbuf = rxbuf;
+	csum = 0;
+	while (*crxbuf != '*') {
+		if (*crxbuf == 0 || i >= (ANEMO_BUFSIZE - 4))
+			return;
+		csum ^= *crxbuf;
+		crxbuf++;
+		i++;
+	}
+	i++; crxbuf++; /* skip '*' */
+	rcsum = 0;
+	if (*crxbuf >= '0' && *crxbuf <= '9')
+		rcsum += *crxbuf - '0';
+	else if (*crxbuf >= 'A' && *crxbuf <= 'F')
+		rcsum += *crxbuf + 0x0A - 'A';
+	else
+		return;
+	i++; crxbuf++;
+	rcsum = rcsum << 4;
+	if (*crxbuf >= '0' && *crxbuf <= '9')
+		rcsum += *crxbuf - '0';
+	else if (*crxbuf >= 'A' && *crxbuf <= 'F')
+		rcsum += *crxbuf + 0x0A - 'A';
+	else
+		return;
 
-	for (; i < 10 ; i++, rxbuf++) {
+	printf("rcsum 0x%x csum 0x%x\n", rcsum, csum);
+	if (rcsum != csum)
+		return;
+
+	for (i = 1; i < 10 ; i++, rxbuf++) {
 		/* we should have the NMEA ID 'MWV' in the first few chars */
 		if (*rxbuf == 0)
 			return;
@@ -396,6 +430,7 @@ main(void)
 
 	anemo_rxbufi = 0;
 	anemo_rxbufs = 0;
+	anemo_rx_error = 0;
 	wind_ok = 0;
 
         /* read devid and user IDs */ 
@@ -497,6 +532,7 @@ main(void)
 	U2CON0 = 0x10; /* RXEN */     
 	U2CON2 = 0x80; /* run during overflow */
 	U2CON1 = 0; /* off for now */ 
+	U2ERRIE = 0;
 	IPR8bits.U2RXIP = 0;
 
 	INTCON0bits.GIEH=1;  /* enable high-priority interrupts */
@@ -700,6 +736,9 @@ irql_uart2(void)
 {
 	char c;
 	while (PIE8bits.U2RXIE && PIR8bits.U2RXIF) {
+		//if (U2ERRIRbits.FERIF) {
+		// 	anemo_rx_error++;
+		//}
 		c = U2RXB;
 		if (c == 0x0a) {
 			; /* ignore */
@@ -712,8 +751,11 @@ irql_uart2(void)
 				anemo_rxbuf2[anemo_rxbufi] = 0;
 				anemo_rxbufs = 0;
 			}
-			softintrs.bits.anemo_rx = 1;
 			anemo_rxbufi = 0;
+			if (anemo_rx_error)
+				anemo_rx_error = 0;
+			else 
+				softintrs.bits.anemo_rx = 1;
 		} else {
 			if (anemo_rxbufi < (ANEMO_BUFSIZE - 1)) {
 				if (anemo_rxbufs == 0) {
@@ -722,10 +764,13 @@ irql_uart2(void)
 					anemo_rxbuf2[anemo_rxbufi] = c;
 				}
 				anemo_rxbufi++;
+			} else {
+				anemo_rx_error++;
 			}
 		}
 		if (U2ERRIRbits.RXFOIF) {
 			U2ERRIRbits.RXFOIF = 0;
+			anemo_rx_error++;
 		}
 	}
 }
