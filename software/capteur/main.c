@@ -101,7 +101,7 @@ static unsigned char anemo_rxbufs;
 static unsigned char anemo_rxbufs_ready;
 static unsigned char anemo_rx_error;
 
-#define ANEMO_DIR_OFFSET 2000 /* deg * 10 */
+#define ANEMO_DIR_OFFSET 1800 /* deg * 10 */
 
 static uint16_t wind_speed; /* kn * 10 */
 static uint16_t wind_angle; /* deg * 10 */
